@@ -151,4 +151,13 @@ npm run lint
 
 ---
 
+## 🎓 개발 가이드라인 (Skills)
+
+React/Next.js 코드 작성 시 아래 가이드라인을 참고하세요:
+
+- **React 성능 최적화**: @.claude/skills/react-best-practices/SKILL.md
+- **웹 디자인 가이드**: @.claude/skills/web-design-guidelines/SKILL.md
+
+---
+
 *마지막 업데이트: 2026-01-22*
