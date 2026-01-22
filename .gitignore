@@ -44,4 +44,5 @@ next-env.d.ts
 .claude/
 .mcp.json
 .cclsp.json
+CLAUDE.md
 CLAUDE.local.md
