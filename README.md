@@ -14,16 +14,16 @@ AI 동화 서비스 프론트엔드
 
 ```bash
 # 의존성 설치
-npm install
+pnpm install
 
 # 개발 서버 실행
-npm run dev
+pnpm dev
 
 # 빌드
-npm run build
+pnpm build
 
 # 린트
-npm run lint
+pnpm lint
 ```
 
 ## 환경 변수
