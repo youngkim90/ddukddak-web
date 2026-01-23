@@ -12,3 +12,6 @@ export type { CardProps } from "./Card";
 
 export { StoryCard } from "./StoryCard";
 export type { StoryCardProps } from "./StoryCard";
+
+export { RecommendBanner } from "./RecommendBanner";
+export type { RecommendBannerProps } from "./RecommendBanner";

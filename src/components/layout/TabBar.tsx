@@ -12,7 +12,7 @@ interface TabItem {
 
 const tabs: TabItem[] = [
   {
-    href: "/",
+    href: "/home",
     label: "홈",
     icon: HomeIcon,
   },
@@ -33,7 +33,7 @@ export function TabBar() {
 
   return (
     <nav className="fixed inset-x-0 bottom-0 z-10 border-t border-[#E5E5E5] bg-white pb-safe">
-      <div className="flex h-16 items-center justify-around">
+      <div className="mx-auto flex h-16 max-w-3xl items-center justify-around">
         {tabs.map((tab) => {
           const isActive = pathname === tab.href ||
             (tab.href !== "/" && pathname.startsWith(tab.href));

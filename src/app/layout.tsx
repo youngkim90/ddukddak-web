@@ -28,7 +28,7 @@ export default function RootLayout({
           href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css"
         />
       </head>
-      <body className="bg-[#E5E5E5] antialiased">
+      <body className="bg-[#E8E4DE] antialiased">
         <div className="mx-auto min-h-dvh w-full max-w-3xl bg-[#FFF9F0] shadow-xl">
           {children}
         </div>

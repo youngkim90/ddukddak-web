@@ -24,7 +24,6 @@
 }
 
 body {
-  background: var(--color-background);
   color: var(--color-text);
   font-family: "Pretendard", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
 }

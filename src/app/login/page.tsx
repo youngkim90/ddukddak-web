@@ -14,7 +14,7 @@ export default function LoginPage() {
     e.preventDefault();
     // TODO: Implement actual login logic with Supabase
     console.log("Login:", { email, password });
-    router.push("/");
+    router.push("/home");
   }
 
   function handleKakaoLogin() {
