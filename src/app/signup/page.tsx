@@ -1,9 +1,24 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
+import { Check, X } from "lucide-react";
 import { Button, Input, Checkbox } from "@/components/ui";
 import { Header } from "@/components/layout";
+
+// 비밀번호 유효성 검사 함수
+function validatePassword(password: string) {
+  return {
+    minLength: password.length >= 8,
+    hasLetter: /[a-zA-Z]/.test(password),
+    hasNumber: /[0-9]/.test(password),
+  };
+}
+
+// 이메일 유효성 검사 함수
+function validateEmail(email: string) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
 
 export default function SignupPage() {
   const router = useRouter();
@@ -13,15 +28,21 @@ export default function SignupPage() {
   const [agreeTerms, setAgreeTerms] = useState(false);
   const [agreePrivacy, setAgreePrivacy] = useState(false);
   const [agreeMarketing, setAgreeMarketing] = useState(false);
+  const [showValidation, setShowValidation] = useState(false);
+
+  const passwordValidation = useMemo(() => validatePassword(password), [password]);
+  const isPasswordValid = passwordValidation.minLength && passwordValidation.hasLetter && passwordValidation.hasNumber;
+  const isEmailValid = validateEmail(email);
+  const isPasswordMatch = password === passwordConfirm && passwordConfirm.length > 0;
 
   const isFormValid =
-    email && password && passwordConfirm && agreeTerms && agreePrivacy;
+    isEmailValid && isPasswordValid && isPasswordMatch && agreeTerms && agreePrivacy;
 
   function handleSignup(e: React.FormEvent) {
     e.preventDefault();
+    setShowValidation(true);
 
-    if (password !== passwordConfirm) {
-      alert("비밀번호가 일치하지 않습니다.");
+    if (!isFormValid) {
       return;
     }
 
@@ -44,27 +65,76 @@ export default function SignupPage() {
         <div className="mx-auto w-full max-w-md">
           {/* Signup Form */}
           <form onSubmit={handleSignup} className="space-y-4">
-            <Input
-              type="email"
-              placeholder="이메일"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-            />
-            <Input
-              type="password"
-              placeholder="비밀번호 (8자 이상 영문+숫자)"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-            />
-            <Input
-              type="password"
-              placeholder="비밀번호 확인"
-              value={passwordConfirm}
-              onChange={(e) => setPasswordConfirm(e.target.value)}
-              required
-            />
+            {/* 이메일 입력 */}
+            <div>
+              <Input
+                type="email"
+                placeholder="이메일"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+              />
+              {showValidation && email && !isEmailValid && (
+                <p className="mt-1 text-sm text-[#FF3B30]">올바른 이메일 형식을 입력해주세요</p>
+              )}
+            </div>
+
+            {/* 비밀번호 입력 */}
+            <div>
+              <Input
+                type="password"
+                placeholder="비밀번호"
+                value={password}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  setShowValidation(true);
+                }}
+                required
+              />
+              {/* 비밀번호 유효성 검사 UI */}
+              {password.length > 0 && (
+                <div className="mt-2 space-y-1">
+                  <ValidationItem
+                    isValid={passwordValidation.minLength}
+                    text="8자 이상"
+                  />
+                  <ValidationItem
+                    isValid={passwordValidation.hasLetter}
+                    text="영문 포함"
+                  />
+                  <ValidationItem
+                    isValid={passwordValidation.hasNumber}
+                    text="숫자 포함"
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* 비밀번호 확인 */}
+            <div>
+              <Input
+                type="password"
+                placeholder="비밀번호 확인"
+                value={passwordConfirm}
+                onChange={(e) => setPasswordConfirm(e.target.value)}
+                required
+              />
+              {passwordConfirm.length > 0 && (
+                <div className="mt-1 flex items-center gap-1">
+                  {isPasswordMatch ? (
+                    <>
+                      <Check className="size-4 text-[#34C759]" aria-hidden="true" />
+                      <span className="text-sm text-[#34C759]">비밀번호가 일치합니다</span>
+                    </>
+                  ) : (
+                    <>
+                      <X className="size-4 text-[#FF3B30]" aria-hidden="true" />
+                      <span className="text-sm text-[#FF3B30]">비밀번호가 일치하지 않습니다</span>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
 
             {/* Terms Section */}
             <div className="pt-4">
@@ -105,6 +175,22 @@ export default function SignupPage() {
           </form>
         </div>
       </div>
+    </div>
+  );
+}
+
+// 비밀번호 유효성 항목 컴포넌트
+function ValidationItem({ isValid, text }: { isValid: boolean; text: string }) {
+  return (
+    <div className="flex items-center gap-1.5">
+      {isValid ? (
+        <Check className="size-3.5 text-[#34C759]" aria-hidden="true" />
+      ) : (
+        <X className="size-3.5 text-[#888888]" aria-hidden="true" />
+      )}
+      <span className={`text-xs ${isValid ? "text-[#34C759]" : "text-[#888888]"}`}>
+        {text}
+      </span>
     </div>
   );
 }

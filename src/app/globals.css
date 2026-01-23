@@ -27,3 +27,13 @@ body {
   color: var(--color-text);
   font-family: "Pretendard", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
 }
+
+/* 스크롤바 숨김 유틸리티 */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}

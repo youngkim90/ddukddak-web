@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui";
 import { PageIndicator } from "@/components/layout";
@@ -26,32 +26,78 @@ const slides = [
   },
 ];
 
+const ONBOARDING_COMPLETED_KEY = "ddukddak_onboarding_completed";
+
 export default function OnboardingPage() {
   const router = useRouter();
   const [currentSlide, setCurrentSlide] = useState(0);
+  const touchStartX = useRef(0);
+  const touchEndX = useRef(0);
 
   const isLastSlide = currentSlide === slides.length - 1;
 
+  // 첫 방문 체크 - 이미 온보딩 완료했으면 홈으로 이동
+  useEffect(() => {
+    const hasCompletedOnboarding = localStorage.getItem(ONBOARDING_COMPLETED_KEY);
+    if (hasCompletedOnboarding === "true") {
+      router.replace("/home");
+    }
+  }, [router]);
+
+  function completeOnboarding() {
+    localStorage.setItem(ONBOARDING_COMPLETED_KEY, "true");
+    router.push("/login");
+  }
+
   function handleNext() {
     if (isLastSlide) {
-      router.push("/login");
+      completeOnboarding();
     } else {
       setCurrentSlide((prev) => prev + 1);
     }
   }
 
   function handleSkip() {
-    router.push("/login");
+    completeOnboarding();
+  }
+
+  // 스와이프 핸들러
+  function handleTouchStart(e: React.TouchEvent) {
+    touchStartX.current = e.touches[0].clientX;
+  }
+
+  function handleTouchMove(e: React.TouchEvent) {
+    touchEndX.current = e.touches[0].clientX;
+  }
+
+  function handleTouchEnd() {
+    const diffX = touchStartX.current - touchEndX.current;
+    const minSwipeDistance = 50;
+
+    if (Math.abs(diffX) > minSwipeDistance) {
+      if (diffX > 0 && currentSlide < slides.length - 1) {
+        // 왼쪽으로 스와이프 → 다음
+        setCurrentSlide((prev) => prev + 1);
+      } else if (diffX < 0 && currentSlide > 0) {
+        // 오른쪽으로 스와이프 → 이전
+        setCurrentSlide((prev) => prev - 1);
+      }
+    }
   }
 
   const slide = slides[currentSlide];
 
   return (
-    <div className="flex min-h-dvh flex-col px-6 pb-12 pt-20">
+    <div
+      className="flex min-h-dvh flex-col px-6 pb-12 pt-20"
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+    >
       {/* Content */}
       <div className="flex flex-1 flex-col items-center justify-center">
         {/* Illustration */}
-        <div className="mb-8 flex size-48 items-center justify-center rounded-full bg-[#FFE5CC]">
+        <div className="mb-8 flex size-48 items-center justify-center rounded-full bg-[#FFE5CC] transition-transform duration-300">
           <span className="text-7xl">{slide.icon}</span>
         </div>
 

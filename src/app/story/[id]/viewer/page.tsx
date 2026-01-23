@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useRouter, useParams } from "next/navigation";
 import {
   X,
@@ -11,6 +11,8 @@ import {
   Pause,
   Volume2,
   Music,
+  Maximize,
+  Minimize,
 } from "lucide-react";
 
 // Mock story pages
@@ -57,24 +59,40 @@ export default function StoryViewerPage() {
   const [ttsEnabled, setTtsEnabled] = useState(true);
   const [bgmEnabled, setBgmEnabled] = useState(true);
   const [autoPlayEnabled, setAutoPlayEnabled] = useState(true);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  // 스와이프 관련 refs
+  const touchStartX = useRef(0);
+  const touchEndX = useRef(0);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const totalPages = mockPages.length;
   const page = mockPages[currentPage];
 
-  function handlePrevious() {
+  // 전체화면 상태 감지
+  useEffect(() => {
+    function handleFullscreenChange() {
+      setIsFullscreen(!!document.fullscreenElement);
+    }
+
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+    return () => document.removeEventListener("fullscreenchange", handleFullscreenChange);
+  }, []);
+
+  const handlePrevious = useCallback(() => {
     if (currentPage > 0) {
       setCurrentPage((prev) => prev - 1);
     }
-  }
+  }, [currentPage]);
 
-  function handleNext() {
+  const handleNext = useCallback(() => {
     if (currentPage < totalPages - 1) {
       setCurrentPage((prev) => prev + 1);
     } else {
       // End of story
       router.push(`/story/${params.id}`);
     }
-  }
+  }, [currentPage, totalPages, router, params.id]);
 
   function togglePlayPause() {
     setIsPlaying((prev) => !prev);
@@ -82,33 +100,105 @@ export default function StoryViewerPage() {
   }
 
   function handleClose() {
+    // 전체화면이면 먼저 해제
+    if (document.fullscreenElement) {
+      document.exitFullscreen();
+    }
     router.push(`/story/${params.id}`);
   }
 
+  // 전체화면 토글
+  function toggleFullscreen() {
+    if (!document.fullscreenElement) {
+      containerRef.current?.requestFullscreen();
+    } else {
+      document.exitFullscreen();
+    }
+  }
+
+  // 스와이프 핸들러
+  function handleTouchStart(e: React.TouchEvent) {
+    touchStartX.current = e.touches[0].clientX;
+  }
+
+  function handleTouchMove(e: React.TouchEvent) {
+    touchEndX.current = e.touches[0].clientX;
+  }
+
+  function handleTouchEnd() {
+    const diffX = touchStartX.current - touchEndX.current;
+    const minSwipeDistance = 50;
+
+    if (Math.abs(diffX) > minSwipeDistance) {
+      if (diffX > 0) {
+        // 왼쪽으로 스와이프 → 다음 페이지
+        handleNext();
+      } else {
+        // 오른쪽으로 스와이프 → 이전 페이지
+        handlePrevious();
+      }
+    }
+  }
+
+  // 키보드 네비게이션
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "ArrowLeft") {
+        handlePrevious();
+      } else if (e.key === "ArrowRight") {
+        handleNext();
+      } else if (e.key === "Escape" && document.fullscreenElement) {
+        document.exitFullscreen();
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [handlePrevious, handleNext]);
+
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-[#1A1A2E]">
+    <div
+      ref={containerRef}
+      className="fixed inset-0 z-50 flex flex-col bg-[#1A1A2E]"
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+    >
       {/* Top Bar */}
       <div className="flex items-center justify-between px-4 py-3">
         <button
           onClick={handleClose}
-          className="flex size-10 items-center justify-center rounded-full bg-white/10"
+          className="flex size-10 items-center justify-center rounded-full bg-white/10 transition-colors hover:bg-white/20"
           aria-label="닫기"
         >
           <X className="size-6 text-white" aria-hidden="true" />
         </button>
-        <button
-          onClick={() => setShowSettings(!showSettings)}
-          className="flex size-10 items-center justify-center rounded-full bg-white/10"
-          aria-label="설정"
-        >
-          <Settings className="size-6 text-white" aria-hidden="true" />
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={toggleFullscreen}
+            className="flex size-10 items-center justify-center rounded-full bg-white/10 transition-colors hover:bg-white/20"
+            aria-label={isFullscreen ? "전체화면 해제" : "전체화면"}
+          >
+            {isFullscreen ? (
+              <Minimize className="size-5 text-white" aria-hidden="true" />
+            ) : (
+              <Maximize className="size-5 text-white" aria-hidden="true" />
+            )}
+          </button>
+          <button
+            onClick={() => setShowSettings(!showSettings)}
+            className="flex size-10 items-center justify-center rounded-full bg-white/10 transition-colors hover:bg-white/20"
+            aria-label="설정"
+          >
+            <Settings className="size-6 text-white" aria-hidden="true" />
+          </button>
+        </div>
       </div>
 
       {/* Main Image Area */}
       <div className="flex flex-1 items-center justify-center px-4">
         <div
-          className="aspect-[4/3] w-full max-w-lg rounded-2xl"
+          className="aspect-[4/3] w-full max-w-lg rounded-2xl transition-all duration-300"
           style={{ backgroundColor: page.imageColor }}
         />
       </div>
