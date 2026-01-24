@@ -50,7 +50,7 @@ export default function SubscriptionPage() {
   }
 
   return (
-    <div className="flex min-h-dvh flex-col bg-white">
+    <div className="flex min-h-dvh flex-col bg-[#FFF9F0]">
       {/* Header */}
       <div className="flex items-center justify-end px-4 py-3">
         <button

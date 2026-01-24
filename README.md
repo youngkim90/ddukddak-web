@@ -6,7 +6,7 @@
 
 ## 개발 현황
 
-**Phase 1: 프론트엔드 (Mock 데이터) - 89% 완료**
+**Phase 1: 프론트엔드 UI - 100% 완료 ✅**
 
 | 화면 | Route | 상태 |
 |------|-------|------|
@@ -19,7 +19,15 @@
 | 동화 상세 | `/story/[id]` | ✅ |
 | 동화 뷰어 | `/story/[id]/viewer` | ✅ |
 | 구독 안내 | `/subscription` | ✅ |
-| 설정 | `/settings` | ⏳ |
+| 결제 | `/payment` | ✅ |
+| 설정 | `/settings` | ✅ |
+| 프로필 | `/settings/profile` | ✅ |
+| 구독 관리 | `/settings/subscription` | ✅ |
+
+**Phase 2: 백엔드 연동 - 예정**
+- Supabase Auth 연동
+- TossPayments 결제 연동
+- TTS/BGM 오디오 연동
 
 ## 기술 스택
 
@@ -31,6 +39,7 @@
 | State | Zustand |
 | Server State | TanStack Query |
 | Auth | Supabase Auth |
+| Payment | TossPayments |
 | Icons | Lucide React |
 
 ## 시작하기
@@ -56,8 +65,14 @@ pnpm lint
 `.env.local` 파일 생성:
 
 ```bash
+# Supabase
 NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+
+# TossPayments
+NEXT_PUBLIC_TOSS_CLIENT_KEY=your_toss_client_key
+
+# API
 NEXT_PUBLIC_API_URL=your_api_url
 ```
 
@@ -74,6 +89,10 @@ src/
 │   ├── story/[id]/         # 동화 상세
 │   │   └── viewer/         # 동화 뷰어
 │   ├── subscription/       # 구독 안내
+│   ├── payment/            # 결제
+│   ├── settings/           # 설정
+│   │   ├── profile/        # 프로필 관리
+│   │   └── subscription/   # 구독 관리
 │   └── layout.tsx          # 전역 레이아웃
 │
 ├── components/
@@ -85,14 +104,14 @@ src/
 
 ## 주요 기능
 
-- **동화 뷰어**: 페이지 넘기기, TTS 음성, BGM 배경음악
+- **동화 뷰어**: 스와이프 넘기기, TTS 음성, BGM 배경음악, 전체화면
 - **다국어 지원**: 한국어/영어 전환
 - **구독 시스템**: 무료/월간/연간 플랜
+- **결제**: 카드, 카카오페이, 네이버페이, 토스페이
 - **반응형 레이아웃**: 모바일/태블릿 지원
 
 ## 관련 문서
 
-- [CLAUDE.md](./CLAUDE.md) - 개발 가이드 및 컨벤션
 - [기획 문서](../fairytale-planning/docs/) - 기능 정의, 화면 설계, API 명세
 - [Figma](https://www.figma.com/design/xgSTViIo7HytQATKKWSu7q/Tuktak) - 와이어프레임
 

@@ -36,7 +36,7 @@ export default function StoryDetailPage() {
   }
 
   return (
-    <div className="flex min-h-dvh flex-col bg-white">
+    <div className="flex min-h-dvh flex-col bg-[#FFF9F0]">
       {/* Thumbnail Area */}
       <div
         className="relative h-64 w-full"

@@ -46,3 +46,23 @@ next-env.d.ts
 .cclsp.json
 CLAUDE.md
 CLAUDE.local.md
+
+# IDE
+.idea/
+.vscode/
+*.sublime-*
+
+# OS
+Thumbs.db
+Desktop.ini
+
+# Editor backup
+*~
+*.swp
+*.swo
+
+# Turbo
+.turbo/
+
+# Sentry
+.sentryclirc

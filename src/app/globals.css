@@ -37,3 +37,12 @@ body {
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
 }
+
+/* 페이지 배경 유틸리티 */
+.page-bg {
+  background-color: var(--color-background);
+}
+
+.page-bg-outer {
+  background-color: #E8E4DE;
+}
