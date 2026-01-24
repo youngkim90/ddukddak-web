@@ -44,9 +44,13 @@ export default function SubscriptionPage() {
   const [selectedPlan, setSelectedPlan] = useState("monthly");
 
   function handleSubscribe() {
-    // TODO: Implement actual payment with TossPayments
-    console.log("Subscribe to plan:", selectedPlan);
-    router.push("/home");
+    if (selectedPlan === "free") {
+      // 무료 플랜은 바로 홈으로
+      router.push("/home");
+    } else {
+      // 유료 플랜은 결제 페이지로
+      router.push(`/payment?plan=${selectedPlan}`);
+    }
   }
 
   return (

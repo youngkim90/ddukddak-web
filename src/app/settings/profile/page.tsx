@@ -22,7 +22,7 @@ export default function ProfilePage() {
     // TODO: API call to update profile
     setTimeout(() => {
       setIsSaving(false);
-      router.back();
+      router.push("/settings");
     }, 1000);
   }
 
@@ -31,7 +31,7 @@ export default function ProfilePage() {
       {/* Header */}
       <header className="flex items-center gap-3 bg-white px-4 py-3">
         <button
-          onClick={() => router.back()}
+          onClick={() => router.push("/settings")}
           className="flex size-10 items-center justify-center rounded-full transition-colors hover:bg-[#F5F5F5]"
           aria-label="뒤로가기"
         >

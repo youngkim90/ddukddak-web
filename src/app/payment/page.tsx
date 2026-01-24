@@ -57,7 +57,7 @@ function PaymentContent() {
       {/* Header */}
       <header className="flex items-center gap-3 bg-white px-4 py-3">
         <button
-          onClick={() => router.back()}
+          onClick={() => router.push("/subscription")}
           className="flex size-10 items-center justify-center rounded-full transition-colors hover:bg-[#F5F5F5]"
           aria-label="뒤로가기"
         >

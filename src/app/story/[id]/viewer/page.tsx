@@ -89,8 +89,8 @@ export default function StoryViewerPage() {
     if (currentPage < totalPages - 1) {
       setCurrentPage((prev) => prev + 1);
     } else {
-      // End of story
-      router.push(`/story/${params.id}`);
+      // End of story - replace to avoid history stacking
+      router.replace(`/story/${params.id}`);
     }
   }, [currentPage, totalPages, router, params.id]);
 
@@ -104,7 +104,8 @@ export default function StoryViewerPage() {
     if (document.fullscreenElement) {
       document.exitFullscreen();
     }
-    router.push(`/story/${params.id}`);
+    // replace to avoid history stacking
+    router.replace(`/story/${params.id}`);
   }
 
   // 전체화면 토글
