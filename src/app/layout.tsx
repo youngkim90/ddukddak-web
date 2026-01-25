@@ -1,5 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import { QueryProvider } from "@/providers/QueryProvider";
+import { AuthProvider } from "@/providers/AuthProvider";
 
 export const metadata: Metadata = {
   title: "뚝딱동화",
@@ -29,9 +31,13 @@ export default function RootLayout({
         />
       </head>
       <body className="bg-[#E8E4DE] antialiased">
-        <div className="mx-auto min-h-dvh w-full max-w-3xl bg-[#FFF9F0] shadow-xl">
-          {children}
-        </div>
+        <QueryProvider>
+          <AuthProvider>
+            <div className="mx-auto min-h-dvh w-full max-w-3xl bg-[#FFF9F0] shadow-xl">
+              {children}
+            </div>
+          </AuthProvider>
+        </QueryProvider>
       </body>
     </html>
   );

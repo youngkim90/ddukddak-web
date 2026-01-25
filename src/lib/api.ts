@@ -1,11 +1,11 @@
 /**
  * API 클라이언트
  *
- * 실제 연동 시 axios + supabase로 교체 예정
- * pnpm add axios @supabase/supabase-js
+ * Supabase Auth와 연동된 fetch 기반 API 클라이언트
  */
 
 import { API_BASE_URL } from "./constants";
+import { supabase } from "./supabase";
 import type {
   Story,
   StoriesResponse,
@@ -17,13 +17,6 @@ import type {
   ApiError,
 } from "@/types/story";
 
-// 임시: 토큰 저장소 (실제로는 Supabase Auth 사용)
-let accessToken: string | null = null;
-
-export function setAccessToken(token: string | null) {
-  accessToken = token;
-}
-
 // 기본 fetch 래퍼
 async function fetchApi<T>(
   endpoint: string,
@@ -34,9 +27,14 @@ async function fetchApi<T>(
     ...options.headers,
   };
 
-  if (accessToken) {
+  // Supabase 세션에서 토큰 가져오기
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+
+  if (session?.access_token) {
     (headers as Record<string, string>)["Authorization"] =
-      `Bearer ${accessToken}`;
+      `Bearer ${session.access_token}`;
   }
 
   const response = await fetch(`${API_BASE_URL}${endpoint}`, {
@@ -45,8 +43,23 @@ async function fetchApi<T>(
   });
 
   if (!response.ok) {
-    const error: ApiError = await response.json();
+    const error: ApiError = await response.json().catch(() => ({
+      statusCode: response.status,
+      message: response.statusText,
+      error: "Network Error",
+    }));
+
+    // 401 에러 시 세션 정리 (리다이렉트는 AuthProvider에서 처리)
+    if (response.status === 401) {
+      await supabase.auth.signOut();
+    }
+
     throw error;
+  }
+
+  // 204 No Content 처리
+  if (response.status === 204) {
+    return undefined as T;
   }
 
   return response.json();
@@ -117,7 +130,7 @@ export const progressApi = {
 
   /** 특정 동화 진행률 조회 */
   getByStoryId: (storyId: string) =>
-    fetchApi<Progress>(`/progress/${storyId}`),
+    fetchApi<Progress | null>(`/progress/${storyId}`),
 
   /** 진행률 저장 */
   save: (storyId: string, data: { currentPage: number; isCompleted: boolean }) =>
@@ -157,7 +170,6 @@ const api = {
   stories: storiesApi,
   progress: progressApi,
   subscriptions: subscriptionsApi,
-  setAccessToken,
 };
 
 export default api;
