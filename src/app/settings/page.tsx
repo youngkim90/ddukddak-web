@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   User,
@@ -8,17 +9,12 @@ import {
   Megaphone,
   Headphones,
   FileText,
-  LogOut,
   ChevronRight,
 } from "lucide-react";
 import { TabBar } from "@/components/layout";
-
-// Mock user data
-const mockUser = {
-  name: "김뚝딱",
-  email: "ddukddak@email.com",
-  profileImage: null as string | null,
-};
+import { useAuth } from "@/hooks/useAuth";
+import { useDeleteAccount } from "@/hooks/useUser";
+import { Button } from "@/components/ui";
 
 interface MenuItem {
   id: string;
@@ -34,6 +30,9 @@ interface MenuSection {
 
 export default function SettingsPage() {
   const router = useRouter();
+  const { user, signOut, isLoading: authLoading } = useAuth();
+  const deleteAccount = useDeleteAccount();
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   const menuSections: MenuSection[] = [
     {
@@ -52,15 +51,18 @@ export default function SettingsPage() {
     },
   ];
 
-  function handleLogout() {
-    // TODO: Implement actual logout with Supabase
-    console.log("Logout");
-    router.push("/login");
+  async function handleLogout() {
+    await signOut();
   }
 
-  function handleDeleteAccount() {
-    // TODO: Implement account deletion
-    console.log("Delete account");
+  async function handleDeleteAccount() {
+    try {
+      await deleteAccount.mutateAsync();
+      router.push("/login");
+    } catch (error) {
+      console.error("Failed to delete account:", error);
+    }
+    setShowDeleteModal(false);
   }
 
   return (
@@ -73,9 +75,9 @@ export default function SettingsPage() {
       {/* Profile Section */}
       <section className="flex flex-col items-center bg-white py-6">
         <div className="flex size-[60px] items-center justify-center rounded-full bg-[#E6E6E6]">
-          {mockUser.profileImage ? (
+          {user?.avatarUrl ? (
             <img
-              src={mockUser.profileImage}
+              src={user.avatarUrl}
               alt="프로필"
               className="size-full rounded-full object-cover"
             />
@@ -83,8 +85,10 @@ export default function SettingsPage() {
             <User className="size-8 text-[#999999]" aria-hidden="true" />
           )}
         </div>
-        <p className="mt-3 text-lg font-bold text-[#333333]">{mockUser.name}</p>
-        <p className="mt-1 text-sm text-[#808080]">{mockUser.email}</p>
+        <p className="mt-3 text-lg font-bold text-[#333333]">
+          {user?.nickname || "사용자"}
+        </p>
+        <p className="mt-1 text-sm text-[#808080]">{user?.email || ""}</p>
       </section>
 
       {/* Menu Sections */}
@@ -108,15 +112,18 @@ export default function SettingsPage() {
         <nav>
           <button
             onClick={handleLogout}
-            className="flex w-full items-center bg-white px-5 py-4 transition-colors hover:bg-[#F9F9F9]"
+            disabled={authLoading}
+            className="flex w-full items-center bg-white px-5 py-4 transition-colors hover:bg-[#F9F9F9] disabled:opacity-50"
           >
-            <span className="text-[#808080]">로그아웃</span>
+            <span className="text-[#808080]">
+              {authLoading ? "로그아웃 중..." : "로그아웃"}
+            </span>
           </button>
         </nav>
 
         {/* Delete Account */}
         <button
-          onClick={handleDeleteAccount}
+          onClick={() => setShowDeleteModal(true)}
           className="px-5 py-2 text-left text-sm text-[#B3B3B3] transition-colors hover:text-[#999999]"
         >
           회원탈퇴
@@ -127,6 +134,46 @@ export default function SettingsPage() {
           버전 1.0.0
         </p>
       </main>
+
+      {/* Delete Account Modal */}
+      {showDeleteModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="delete-modal-title"
+        >
+          <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl">
+            <h2
+              id="delete-modal-title"
+              className="mb-2 text-lg font-bold text-[#333333]"
+            >
+              회원 탈퇴
+            </h2>
+            <p className="mb-6 text-sm text-[#888888]">
+              정말 탈퇴하시겠습니까?
+              <br />
+              탈퇴 후 모든 데이터가 삭제되며 복구할 수 없습니다.
+            </p>
+            <div className="flex gap-3">
+              <Button
+                variant="secondary"
+                onClick={() => setShowDeleteModal(false)}
+                className="flex-1"
+              >
+                취소
+              </Button>
+              <Button
+                onClick={handleDeleteAccount}
+                disabled={deleteAccount.isPending}
+                className="flex-1 bg-[#FF3B30] hover:bg-[#E02D22]"
+              >
+                {deleteAccount.isPending ? "처리 중..." : "탈퇴하기"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <TabBar />
     </div>
