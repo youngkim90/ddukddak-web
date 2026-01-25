@@ -40,7 +40,7 @@ export class ErrorBoundary extends Component<Props, State> {
       return (
         <div className="flex min-h-[300px] flex-col items-center justify-center p-6">
           <div className="text-center">
-            <p className="text-6xl">😢</p>
+            <p className="text-6xl" aria-hidden="true">😢</p>
             <h2 className="mt-4 text-lg font-bold text-[#333333]">
               문제가 발생했어요
             </h2>

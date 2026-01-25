@@ -57,7 +57,7 @@ export function ApiError({ status, message, onRetry }: ApiErrorProps) {
   return (
     <div className="flex min-h-[300px] flex-col items-center justify-center p-6">
       <div className="text-center">
-        <p className="text-6xl">{content.emoji}</p>
+        <p className="text-6xl" aria-hidden="true">{content.emoji}</p>
         <h2 className="mt-4 text-lg font-bold text-[#333333]">{content.title}</h2>
         <p className="mt-2 text-sm text-[#888888]">{content.description}</p>
         {content.action && (
