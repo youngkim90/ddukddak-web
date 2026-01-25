@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
-import { useRouter, useParams } from "next/navigation";
+import { useState, useRef, useEffect, useCallback, Suspense } from "react";
+import { useRouter, useParams, useSearchParams } from "next/navigation";
 import {
   X,
   Settings,
@@ -14,60 +14,45 @@ import {
   Maximize,
   Minimize,
 } from "lucide-react";
+import { useStoryPages } from "@/hooks/useStories";
+import { useSaveProgress, useProgress } from "@/hooks/useProgress";
 
-// Mock story pages
-const mockPages = [
-  {
-    id: 1,
-    imageColor: "#FAD9E5",
-    textKo: "옛날 옛적, 이가 아파서 우는 토토가 있었어요.",
-    textEn: "Once upon a time, there was Toto who cried because of a toothache.",
-  },
-  {
-    id: 2,
-    imageColor: "#E5D9FA",
-    textKo: "그때, 반짝반짝 빛나는 양치 요정 뽀드득이 나타났어요!",
-    textEn: "Then, the sparkling tooth fairy Ppodeuk appeared!",
-  },
-  {
-    id: 3,
-    imageColor: "#D9FAE5",
-    textKo: '"안녕 토토! 내가 올바른 양치법을 알려줄게!"',
-    textEn: '"Hello Toto! I will teach you the right way to brush your teeth!"',
-  },
-  {
-    id: 4,
-    imageColor: "#FAF2D9",
-    textKo: "뽀드득은 토토에게 위아래로 쓱쓱 닦는 법을 알려줬어요.",
-    textEn: "Ppodeuk taught Toto how to brush up and down.",
-  },
-  {
-    id: 5,
-    imageColor: "#D9E5FA",
-    textKo: "토토는 열심히 따라했어요. 쓱쓱 쓱쓱!",
-    textEn: "Toto followed along diligently. Brush brush!",
-  },
-];
-
-export default function StoryViewerPage() {
+function ViewerContent() {
   const router = useRouter();
   const params = useParams();
+  const searchParams = useSearchParams();
+  const storyId = params.id as string;
+  const initialLang = searchParams.get("lang") as "ko" | "en" || "ko";
+
   const [currentPage, setCurrentPage] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [language, setLanguage] = useState<"ko" | "en">("ko");
+  const [language, setLanguage] = useState<"ko" | "en">(initialLang);
   const [showSettings, setShowSettings] = useState(false);
   const [ttsEnabled, setTtsEnabled] = useState(true);
   const [bgmEnabled, setBgmEnabled] = useState(true);
   const [autoPlayEnabled, setAutoPlayEnabled] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
+  // API로 페이지 데이터 조회
+  const { data: pagesData, isLoading, error } = useStoryPages(storyId);
+  const { data: progressData } = useProgress(storyId);
+  const saveProgress = useSaveProgress(storyId);
+
+  const pages = pagesData?.pages || [];
+  const totalPages = pages.length;
+  const page = pages[currentPage];
+
   // 스와이프 관련 refs
   const touchStartX = useRef(0);
   const touchEndX = useRef(0);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const totalPages = mockPages.length;
-  const page = mockPages[currentPage];
+  // 저장된 진행률로 초기화
+  useEffect(() => {
+    if (progressData && progressData.currentPage > 0 && !progressData.isCompleted) {
+      setCurrentPage(Math.min(progressData.currentPage - 1, totalPages - 1));
+    }
+  }, [progressData, totalPages]);
 
   // 전체화면 상태 감지
   useEffect(() => {
@@ -78,6 +63,16 @@ export default function StoryViewerPage() {
     document.addEventListener("fullscreenchange", handleFullscreenChange);
     return () => document.removeEventListener("fullscreenchange", handleFullscreenChange);
   }, []);
+
+  // 페이지 변경 시 진행률 저장
+  useEffect(() => {
+    if (totalPages > 0) {
+      saveProgress.mutate({
+        currentPage: currentPage + 1,
+        isCompleted: currentPage >= totalPages - 1,
+      });
+    }
+  }, [currentPage, totalPages]);
 
   const handlePrevious = useCallback(() => {
     if (currentPage > 0) {
@@ -90,9 +85,9 @@ export default function StoryViewerPage() {
       setCurrentPage((prev) => prev + 1);
     } else {
       // End of story - replace to avoid history stacking
-      router.replace(`/story/${params.id}`);
+      router.replace(`/story/${storyId}`);
     }
-  }, [currentPage, totalPages, router, params.id]);
+  }, [currentPage, totalPages, router, storyId]);
 
   function togglePlayPause() {
     setIsPlaying((prev) => !prev);
@@ -105,7 +100,7 @@ export default function StoryViewerPage() {
       document.exitFullscreen();
     }
     // replace to avoid history stacking
-    router.replace(`/story/${params.id}`);
+    router.replace(`/story/${storyId}`);
   }
 
   // 전체화면 토글
@@ -157,6 +152,30 @@ export default function StoryViewerPage() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [handlePrevious, handleNext]);
 
+  // 로딩 상태
+  if (isLoading) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#1A1A2E]">
+        <div className="size-12 animate-spin rounded-full border-4 border-[#FF9500] border-t-transparent" />
+      </div>
+    );
+  }
+
+  // 에러 상태
+  if (error || !page) {
+    return (
+      <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#1A1A2E]">
+        <p className="text-white">동화를 불러오지 못했습니다.</p>
+        <button
+          onClick={() => router.back()}
+          className="mt-4 rounded-lg bg-[#FF9500] px-4 py-2 text-sm text-white"
+        >
+          돌아가기
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div
       ref={containerRef}
@@ -198,10 +217,15 @@ export default function StoryViewerPage() {
 
       {/* Main Image Area */}
       <div className="flex flex-1 items-center justify-center px-4">
-        <div
-          className="aspect-[4/3] w-full max-w-lg rounded-2xl transition-all duration-300"
-          style={{ backgroundColor: page.imageColor }}
-        />
+        {page.imageUrl ? (
+          <img
+            src={page.imageUrl}
+            alt={`페이지 ${currentPage + 1}`}
+            className="aspect-[4/3] w-full max-w-lg rounded-2xl object-cover transition-all duration-300"
+          />
+        ) : (
+          <div className="aspect-[4/3] w-full max-w-lg rounded-2xl bg-gradient-to-br from-[#FAD9E5] to-[#D9E5FA] transition-all duration-300" />
+        )}
       </div>
 
       {/* Text Area */}
@@ -364,5 +388,19 @@ export default function StoryViewerPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function StoryViewerPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#1A1A2E]">
+          <div className="size-12 animate-spin rounded-full border-4 border-[#FF9500] border-t-transparent" />
+        </div>
+      }
+    >
+      <ViewerContent />
+    </Suspense>
   );
 }

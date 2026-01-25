@@ -4,41 +4,36 @@ import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Header } from "@/components/layout";
 import { StoryCard } from "@/components/ui";
-
-// Mock data
-const mockStories = [
-  { id: "1", title: "양치 요정 뽀드득", thumbnailColor: "#FAD9E5", ageGroup: "3-5" },
-  { id: "2", title: "용감한 토끼 또롱이", thumbnailColor: "#D9E5F2", ageGroup: "3-5" },
-  { id: "3", title: "작은 별의 여행", thumbnailColor: "#D9D9D9", ageGroup: "5-7", isLocked: true },
-  { id: "4", title: "숲 속의 친구들", thumbnailColor: "#E5FAD9", ageGroup: "3-5" },
-  { id: "5", title: "바다 탐험대", thumbnailColor: "#D9FAF2", ageGroup: "5-7", isLocked: true },
-  { id: "6", title: "꿈꾸는 구름", thumbnailColor: "#FAF2D9", ageGroup: "3-5" },
-];
-
-const ageFilters = [
-  { label: "전체", value: "all" },
-  { label: "3-5세", value: "3-5" },
-  { label: "5-7세", value: "5-7" },
-];
+import { useStories } from "@/hooks/useStories";
+import { useIsSubscribed } from "@/stores/authStore";
+import { CATEGORY_LABELS, AGE_GROUP_OPTIONS } from "@/lib/constants";
+import type { StoryCategory } from "@/types/story";
 
 function StoriesContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const category = searchParams.get("category") || "교훈";
+  const category = searchParams.get("category") || "";
   const [selectedAge, setSelectedAge] = useState("all");
+  const isSubscribed = useIsSubscribed();
 
-  const filteredStories =
-    selectedAge === "all"
-      ? mockStories
-      : mockStories.filter((story) => story.ageGroup === selectedAge);
+  // API로 동화 목록 조회
+  const { data, isLoading, error } = useStories({
+    category: category || undefined,
+    ageGroup: selectedAge !== "all" ? selectedAge : undefined,
+  });
+
+  const stories = data?.stories || [];
+  const categoryLabel = category
+    ? CATEGORY_LABELS[category as StoryCategory] || category
+    : "전체";
 
   return (
     <div className="flex min-h-dvh flex-col">
-      <Header title={`${category} 동화`} showBack />
+      <Header title={`${categoryLabel} 동화`} showBack />
 
       {/* Age Filter Tabs */}
       <div className="flex gap-2 border-b border-[#E5E5E5] px-4 py-3">
-        {ageFilters.map((filter) => (
+        {AGE_GROUP_OPTIONS.map((filter) => (
           <button
             key={filter.value}
             onClick={() => setSelectedAge(filter.value)}
@@ -56,17 +51,45 @@ function StoriesContent() {
 
       {/* Story Grid */}
       <div className="flex-1 px-4 py-4">
-        <div className="grid grid-cols-2 gap-4">
-          {filteredStories.map((story) => (
-            <StoryCard
-              key={story.id}
-              title={story.title}
-              thumbnailColor={story.thumbnailColor}
-              isLocked={story.isLocked}
-              onClick={() => router.push(`/story/${story.id}`)}
-            />
-          ))}
-        </div>
+        {isLoading ? (
+          // 스켈레톤 로딩
+          <div className="grid grid-cols-2 gap-4">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i}>
+                <div className="aspect-[3/4] animate-pulse rounded-xl bg-gray-200" />
+                <div className="mt-2 h-4 animate-pulse rounded bg-gray-200" />
+              </div>
+            ))}
+          </div>
+        ) : error ? (
+          // 에러 상태
+          <div className="flex flex-1 flex-col items-center justify-center py-12">
+            <p className="text-[#888888]">동화를 불러오지 못했습니다.</p>
+            <button
+              onClick={() => window.location.reload()}
+              className="mt-4 rounded-lg bg-[#FF9500] px-4 py-2 text-sm text-white"
+            >
+              다시 시도
+            </button>
+          </div>
+        ) : stories.length > 0 ? (
+          <div className="grid grid-cols-2 gap-4">
+            {stories.map((story) => (
+              <StoryCard
+                key={story.id}
+                title={story.titleKo}
+                thumbnailUrl={story.thumbnailUrl}
+                isLocked={!story.isFree && !isSubscribed}
+                onClick={() => router.push(`/story/${story.id}`)}
+              />
+            ))}
+          </div>
+        ) : (
+          // 빈 상태
+          <div className="flex flex-1 flex-col items-center justify-center py-12">
+            <p className="text-[#888888]">동화가 없습니다.</p>
+          </div>
+        )}
       </div>
     </div>
   );

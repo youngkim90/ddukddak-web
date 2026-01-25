@@ -1,13 +1,15 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { HomeHeader, TabBar } from "@/components/layout";
 import { StoryCard } from "@/components/ui";
+import { useStoriesByCategory } from "@/hooks/useStories";
+import { useIsSubscribed } from "@/stores/authStore";
+import { CATEGORY_LABELS } from "@/lib/constants";
 
-// Mock data for banners
+// Mock data for banners (배너 API가 없으므로 Mock 유지)
 const mockBanners = [
   {
     id: 1,
@@ -32,34 +34,16 @@ const mockBanners = [
   },
 ];
 
-// Mock data for stories
-const lessonStories = [
-  { id: "1", title: "양치 요정 뽀드득", thumbnailColor: "#FAD9E5" },
-  { id: "2", title: "정리 습관 배우기", thumbnailColor: "#E5D9FA" },
-  { id: "3", title: "나눔의 기쁨", thumbnailColor: "#D9FAE5" },
-  { id: "4", title: "인사 잘하기", thumbnailColor: "#FAF2D9" },
-  { id: "5", title: "친구와 사이좋게", thumbnailColor: "#D9E5FA", isLocked: true },
-];
-
-const adventureStories = [
-  { id: "6", title: "용감한 토끼 또롱이", thumbnailColor: "#D9E5F2" },
-  { id: "7", title: "작은 별의 여행", thumbnailColor: "#D9D9D9", isLocked: true },
-  { id: "8", title: "바다 탐험대", thumbnailColor: "#D9FAF2", isLocked: true },
-  { id: "9", title: "공룡 친구 디노", thumbnailColor: "#FAD9D9" },
-  { id: "10", title: "우주 탐험", thumbnailColor: "#E5E5FA", isLocked: true },
-];
-
-const familyStories = [
-  { id: "11", title: "동생이 생겼어요", thumbnailColor: "#FFE5D9" },
-  { id: "12", title: "할머니 댁 방문", thumbnailColor: "#D9FFE5" },
-  { id: "13", title: "가족 여행", thumbnailColor: "#E5D9FF", isLocked: true },
-  { id: "14", title: "엄마의 생일", thumbnailColor: "#FFD9E5" },
-];
-
 export default function HomePage() {
   const router = useRouter();
   const [currentBanner, setCurrentBanner] = useState(0);
   const autoSlideRef = useRef<NodeJS.Timeout | null>(null);
+  const isSubscribed = useIsSubscribed();
+
+  // API로 카테고리별 동화 목록 조회
+  const { data: lessonData, isLoading: lessonLoading } = useStoriesByCategory("lesson", 5);
+  const { data: adventureData, isLoading: adventureLoading } = useStoriesByCategory("adventure", 5);
+  const { data: familyData, isLoading: familyLoading } = useStoriesByCategory("family", 5);
 
   // 캐러셀 자동 슬라이드
   useEffect(() => {
@@ -133,24 +117,30 @@ export default function HomePage() {
 
         {/* 교훈 동화 - 가로 스크롤 */}
         <StorySection
-          title="📚 교훈 동화"
-          stories={lessonStories}
+          title={`📚 ${CATEGORY_LABELS.lesson} 동화`}
+          stories={lessonData?.stories || []}
+          isLoading={lessonLoading}
+          isSubscribed={isSubscribed}
           onStoryClick={(id) => router.push(`/story/${id}`)}
           onMoreClick={() => router.push("/stories?category=lesson")}
         />
 
         {/* 모험 동화 - 가로 스크롤 */}
         <StorySection
-          title="🚀 모험 동화"
-          stories={adventureStories}
+          title={`🚀 ${CATEGORY_LABELS.adventure} 동화`}
+          stories={adventureData?.stories || []}
+          isLoading={adventureLoading}
+          isSubscribed={isSubscribed}
           onStoryClick={(id) => router.push(`/story/${id}`)}
           onMoreClick={() => router.push("/stories?category=adventure")}
         />
 
         {/* 가족 동화 - 가로 스크롤 */}
         <StorySection
-          title="🏠 가족 동화"
-          stories={familyStories}
+          title={`🏠 ${CATEGORY_LABELS.family} 동화`}
+          stories={familyData?.stories || []}
+          isLoading={familyLoading}
+          isSubscribed={isSubscribed}
           onStoryClick={(id) => router.push(`/story/${id}`)}
           onMoreClick={() => router.push("/stories?category=family")}
         />
@@ -166,15 +156,24 @@ interface StorySectionProps {
   title: string;
   stories: Array<{
     id: string;
-    title: string;
-    thumbnailColor: string;
-    isLocked?: boolean;
+    titleKo: string;
+    thumbnailUrl: string;
+    isFree: boolean;
   }>;
+  isLoading: boolean;
+  isSubscribed: boolean;
   onStoryClick: (id: string) => void;
   onMoreClick: () => void;
 }
 
-function StorySection({ title, stories, onStoryClick, onMoreClick }: StorySectionProps) {
+function StorySection({
+  title,
+  stories,
+  isLoading,
+  isSubscribed,
+  onStoryClick,
+  onMoreClick,
+}: StorySectionProps) {
   return (
     <section>
       <div className="mb-3 flex items-center justify-between px-4">
@@ -189,16 +188,28 @@ function StorySection({ title, stories, onStoryClick, onMoreClick }: StorySectio
 
       {/* 가로 스크롤 목록 */}
       <div className="scrollbar-hide flex gap-3 overflow-x-auto px-4 pb-2">
-        {stories.map((story) => (
-          <div key={story.id} className="w-28 shrink-0">
-            <StoryCard
-              title={story.title}
-              thumbnailColor={story.thumbnailColor}
-              isLocked={story.isLocked}
-              onClick={() => onStoryClick(story.id)}
-            />
-          </div>
-        ))}
+        {isLoading ? (
+          // 스켈레톤 로딩
+          Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="w-28 shrink-0">
+              <div className="aspect-[3/4] animate-pulse rounded-xl bg-gray-200" />
+              <div className="mt-2 h-4 animate-pulse rounded bg-gray-200" />
+            </div>
+          ))
+        ) : stories.length > 0 ? (
+          stories.map((story) => (
+            <div key={story.id} className="w-28 shrink-0">
+              <StoryCard
+                title={story.titleKo}
+                thumbnailUrl={story.thumbnailUrl}
+                isLocked={!story.isFree && !isSubscribed}
+                onClick={() => onStoryClick(story.id)}
+              />
+            </div>
+          ))
+        ) : (
+          <p className="text-sm text-[#888888]">동화가 없습니다.</p>
+        )}
       </div>
     </section>
   );
