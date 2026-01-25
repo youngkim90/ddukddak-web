@@ -1,30 +1,36 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Button, Input } from "@/components/ui";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function LoginPage() {
-  const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirect = searchParams.get("redirect");
+  const { signInWithEmail, signInWithOAuth, isLoading, error, clearError } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
-  function handleLogin(e: React.FormEvent) {
+  async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
-    // TODO: Implement actual login logic with Supabase
-    console.log("Login:", { email, password });
-    router.push("/home");
+    clearError();
+
+    const result = await signInWithEmail(email, password);
+    if (result.success && redirect) {
+      window.location.href = redirect;
+    }
   }
 
-  function handleKakaoLogin() {
-    // TODO: Implement Kakao OAuth
-    console.log("Kakao login");
+  async function handleKakaoLogin() {
+    clearError();
+    await signInWithOAuth("kakao");
   }
 
-  function handleGoogleLogin() {
-    // TODO: Implement Google OAuth
-    console.log("Google login");
+  async function handleGoogleLogin() {
+    clearError();
+    await signInWithOAuth("google");
   }
 
   return (
@@ -36,6 +42,13 @@ export default function LoginPage() {
           <h1 className="text-[28px] font-bold text-[#333333]">뚝딱동화</h1>
         </div>
 
+        {/* Error Message */}
+        {error && (
+          <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-[#FF3B30]">
+            {error}
+          </div>
+        )}
+
         {/* Login Form */}
         <form onSubmit={handleLogin} className="space-y-4">
           <Input
@@ -44,6 +57,7 @@ export default function LoginPage() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
+            disabled={isLoading}
           />
           <Input
             type="password"
@@ -51,9 +65,16 @@ export default function LoginPage() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
+            disabled={isLoading}
           />
-          <Button type="submit" variant="primary" size="lg" fullWidth>
-            로그인
+          <Button
+            type="submit"
+            variant="primary"
+            size="lg"
+            fullWidth
+            disabled={isLoading}
+          >
+            {isLoading ? "로그인 중..." : "로그인"}
           </Button>
         </form>
 
@@ -72,6 +93,7 @@ export default function LoginPage() {
             size="lg"
             fullWidth
             onClick={handleKakaoLogin}
+            disabled={isLoading}
           >
             카카오로 시작
           </Button>
@@ -81,6 +103,7 @@ export default function LoginPage() {
             size="lg"
             fullWidth
             onClick={handleGoogleLogin}
+            disabled={isLoading}
           >
             Google로 시작
           </Button>

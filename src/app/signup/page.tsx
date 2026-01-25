@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Check, X } from "lucide-react";
 import { Button, Input, Checkbox } from "@/components/ui";
 import { Header } from "@/components/layout";
+import { useAuth } from "@/hooks/useAuth";
 
 // 비밀번호 유효성 검사 함수
 function validatePassword(password: string) {
@@ -22,6 +23,7 @@ function validateEmail(email: string) {
 
 export default function SignupPage() {
   const router = useRouter();
+  const { signUpWithEmail, isLoading, error, clearError } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [passwordConfirm, setPasswordConfirm] = useState("");
@@ -29,6 +31,7 @@ export default function SignupPage() {
   const [agreePrivacy, setAgreePrivacy] = useState(false);
   const [agreeMarketing, setAgreeMarketing] = useState(false);
   const [showValidation, setShowValidation] = useState(false);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const passwordValidation = useMemo(() => validatePassword(password), [password]);
   const isPasswordValid = passwordValidation.minLength && passwordValidation.hasLetter && passwordValidation.hasNumber;
@@ -38,23 +41,24 @@ export default function SignupPage() {
   const isFormValid =
     isEmailValid && isPasswordValid && isPasswordMatch && agreeTerms && agreePrivacy;
 
-  function handleSignup(e: React.FormEvent) {
+  async function handleSignup(e: React.FormEvent) {
     e.preventDefault();
     setShowValidation(true);
+    clearError();
+    setSuccessMessage(null);
 
     if (!isFormValid) {
       return;
     }
 
-    // TODO: Implement actual signup logic with Supabase
-    console.log("Signup:", {
-      email,
-      password,
-      agreeTerms,
-      agreePrivacy,
-      agreeMarketing,
-    });
-    router.push("/login");
+    const result = await signUpWithEmail(email, password);
+
+    if (result.success) {
+      setSuccessMessage("회원가입이 완료되었습니다. 이메일을 확인해주세요.");
+      setTimeout(() => {
+        router.push("/login");
+      }, 2000);
+    }
   }
 
   return (
@@ -63,6 +67,20 @@ export default function SignupPage() {
 
       <div className="flex-1 px-6 py-6">
         <div className="mx-auto w-full max-w-md">
+          {/* Success Message */}
+          {successMessage && (
+            <div className="mb-4 rounded-lg bg-green-50 p-3 text-sm text-[#34C759]">
+              {successMessage}
+            </div>
+          )}
+
+          {/* Error Message */}
+          {error && (
+            <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-[#FF3B30]">
+              {error}
+            </div>
+          )}
+
           {/* Signup Form */}
           <form onSubmit={handleSignup} className="space-y-4">
             {/* 이메일 입력 */}
@@ -73,6 +91,7 @@ export default function SignupPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
+                disabled={isLoading}
               />
               {showValidation && email && !isEmailValid && (
                 <p className="mt-1 text-sm text-[#FF3B30]">올바른 이메일 형식을 입력해주세요</p>
@@ -90,6 +109,7 @@ export default function SignupPage() {
                   setShowValidation(true);
                 }}
                 required
+                disabled={isLoading}
               />
               {/* 비밀번호 유효성 검사 UI */}
               {password.length > 0 && (
@@ -118,6 +138,7 @@ export default function SignupPage() {
                 value={passwordConfirm}
                 onChange={(e) => setPasswordConfirm(e.target.value)}
                 required
+                disabled={isLoading}
               />
               {passwordConfirm.length > 0 && (
                 <div className="mt-1 flex items-center gap-1">
@@ -146,16 +167,19 @@ export default function SignupPage() {
                   label="[필수] 이용약관에 동의합니다"
                   checked={agreeTerms}
                   onChange={(e) => setAgreeTerms(e.target.checked)}
+                  disabled={isLoading}
                 />
                 <Checkbox
                   label="[필수] 개인정보 처리방침에 동의합니다"
                   checked={agreePrivacy}
                   onChange={(e) => setAgreePrivacy(e.target.checked)}
+                  disabled={isLoading}
                 />
                 <Checkbox
                   label="[선택] 마케팅 정보 수신에 동의합니다"
                   checked={agreeMarketing}
                   onChange={(e) => setAgreeMarketing(e.target.checked)}
+                  disabled={isLoading}
                 />
               </div>
             </div>
@@ -167,9 +191,9 @@ export default function SignupPage() {
                 variant="primary"
                 size="lg"
                 fullWidth
-                disabled={!isFormValid}
+                disabled={!isFormValid || isLoading}
               >
-                가입하기
+                {isLoading ? "가입 중..." : "가입하기"}
               </Button>
             </div>
           </form>
