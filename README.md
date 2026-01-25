@@ -6,7 +6,7 @@
 
 ## 개발 현황
 
-**Phase 1: 프론트엔드 UI - 100% 완료 ✅**
+### Phase 1: 프론트엔드 UI - 100% 완료 ✅
 
 | 화면 | Route | 상태 |
 |------|-------|------|
@@ -24,10 +24,22 @@
 | 프로필 | `/settings/profile` | ✅ |
 | 구독 관리 | `/settings/subscription` | ✅ |
 
-**Phase 2: 백엔드 연동 - 예정**
-- Supabase Auth 연동
-- TossPayments 결제 연동
-- TTS/BGM 오디오 연동
+### Phase 2: 백엔드 API 연동 - 100% 완료 ✅
+
+| 기능 | 상태 |
+|------|------|
+| Supabase Auth (이메일/OAuth) | ✅ |
+| 동화 API (목록/상세/뷰어) | ✅ |
+| 진행률 저장/조회 | ✅ |
+| 구독 관리 (플랜/해지) | ✅ |
+| 사용자 프로필 관리 | ✅ |
+| 라우트 보호 (미들웨어) | ✅ |
+| 에러/로딩 컴포넌트 | ✅ |
+
+### Phase 3: 결제 연동 - 예정
+
+- TossPayments SDK 연동
+- 결제 플로우 구현
 
 ## 기술 스택
 
@@ -36,10 +48,10 @@
 | Framework | Next.js 16 (App Router) |
 | Language | TypeScript 5 |
 | Styling | Tailwind CSS 4 |
-| State | Zustand |
-| Server State | TanStack Query |
+| State | Zustand 5 |
+| Server State | TanStack Query 5 |
 | Auth | Supabase Auth |
-| Payment | TossPayments |
+| Payment | TossPayments (예정) |
 | Icons | Lucide React |
 
 ## 시작하기
@@ -69,37 +81,51 @@ pnpm lint
 NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
 
-# TossPayments
-NEXT_PUBLIC_TOSS_CLIENT_KEY=your_toss_client_key
-
 # API
-NEXT_PUBLIC_API_URL=your_api_url
+NEXT_PUBLIC_API_URL=http://localhost:4000/api
 ```
 
 ## 프로젝트 구조
 
 ```
 src/
-├── app/                    # App Router
+├── app/                    # App Router (페이지)
+│   ├── auth/callback/      # OAuth 콜백
 │   ├── home/               # 홈 화면
 │   ├── login/              # 로그인
 │   ├── signup/             # 회원가입
-│   ├── onboarding/         # 온보딩
 │   ├── stories/            # 동화 목록
-│   ├── story/[id]/         # 동화 상세
-│   │   └── viewer/         # 동화 뷰어
+│   ├── story/[id]/         # 동화 상세/뷰어
 │   ├── subscription/       # 구독 안내
 │   ├── payment/            # 결제
-│   ├── settings/           # 설정
-│   │   ├── profile/        # 프로필 관리
-│   │   └── subscription/   # 구독 관리
-│   └── layout.tsx          # 전역 레이아웃
+│   └── settings/           # 설정
 │
 ├── components/
-│   ├── ui/                 # Button, Card, Input, StoryCard...
+│   ├── ui/                 # Button, Card, Input, Skeleton...
 │   └── layout/             # Header, TabBar...
 │
-└── types/                  # TypeScript 타입 정의
+├── hooks/                  # 커스텀 훅
+│   ├── useAuth.ts          # 인증
+│   ├── useStories.ts       # 동화 API
+│   ├── useProgress.ts      # 진행률
+│   ├── useSubscription.ts  # 구독
+│   └── useUser.ts          # 사용자
+│
+├── lib/                    # 유틸리티
+│   ├── api.ts              # API 클라이언트
+│   ├── supabase.ts         # Supabase 클라이언트
+│   └── utils.ts            # 헬퍼 함수
+│
+├── providers/              # React Provider
+│   ├── QueryProvider.tsx   # TanStack Query
+│   └── AuthProvider.tsx    # 인증 상태
+│
+├── stores/                 # Zustand 스토어
+│   └── authStore.ts        # 인증/사용자 상태
+│
+├── types/                  # TypeScript 타입
+│
+└── middleware.ts           # 라우트 보호
 ```
 
 ## 주요 기능
@@ -107,8 +133,9 @@ src/
 - **동화 뷰어**: 스와이프 넘기기, TTS 음성, BGM 배경음악, 전체화면
 - **다국어 지원**: 한국어/영어 전환
 - **구독 시스템**: 무료/월간/연간 플랜
-- **결제**: 카드, 카카오페이, 네이버페이, 토스페이
+- **결제**: 카드, 카카오페이, 네이버페이, 토스페이 (예정)
 - **반응형 레이아웃**: 모바일/태블릿 지원
+- **인증**: 이메일 로그인, 카카오/구글 OAuth
 
 ## 관련 문서
 
