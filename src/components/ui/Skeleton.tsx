@@ -1,82 +1,90 @@
-"use client";
-
+import { useEffect } from "react";
+import { View, ViewStyle } from "react-native";
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withRepeat,
+  withTiming,
+  Easing,
+} from "react-native-reanimated";
 import { cn } from "@/lib/utils";
 
 interface SkeletonProps {
   className?: string;
-  style?: React.CSSProperties;
+  style?: ViewStyle;
 }
 
-// 기본 스켈레톤
 export function Skeleton({ className, style }: SkeletonProps) {
+  const opacity = useSharedValue(1);
+
+  useEffect(() => {
+    opacity.value = withRepeat(
+      withTiming(0.4, { duration: 800, easing: Easing.inOut(Easing.ease) }),
+      -1,
+      true
+    );
+  }, [opacity]);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    opacity: opacity.value,
+  }));
+
   return (
-    <div
-      className={cn(
-        "animate-pulse rounded-lg bg-gray-200",
-        className
-      )}
-      style={style}
+    <Animated.View
+      style={[animatedStyle, style]}
+      className={cn("rounded-lg bg-[#E5E5E5]", className)}
     />
   );
 }
 
-// 스토리 카드 스켈레톤
 export function StoryCardSkeleton() {
   return (
-    <div className="w-[140px] flex-shrink-0">
-      <Skeleton className="aspect-[3/4] w-full rounded-xl" />
-      <Skeleton className="mt-2 h-4 w-3/4" />
-      <Skeleton className="mt-1 h-3 w-1/2" />
-    </div>
+    <View className="w-36">
+      <Skeleton className="aspect-[4/5] w-full rounded-xl" />
+      <Skeleton className="mt-2 h-4 w-24 rounded" />
+    </View>
   );
 }
 
-// 스토리 목록 스켈레톤 (가로 스크롤)
-export function StoryListSkeleton({ count = 4 }: { count?: number }) {
+export function StoryListSkeleton() {
   return (
-    <div className="flex gap-3 overflow-hidden">
-      {Array.from({ length: count }).map((_, i) => (
-        <StoryCardSkeleton key={i} />
-      ))}
-    </div>
+    <View className="flex-row gap-3 px-5">
+      <StoryCardSkeleton />
+      <StoryCardSkeleton />
+      <StoryCardSkeleton />
+    </View>
   );
 }
 
-// 스토리 상세 스켈레톤
 export function StoryDetailSkeleton() {
   return (
-    <div className="space-y-4 p-5">
-      <Skeleton className="aspect-[4/3] w-full rounded-2xl" />
-      <Skeleton className="h-8 w-3/4" />
-      <Skeleton className="h-4 w-1/4" />
-      <div className="space-y-2">
-        <Skeleton className="h-4 w-full" />
-        <Skeleton className="h-4 w-full" />
-        <Skeleton className="h-4 w-2/3" />
-      </div>
-    </div>
+    <View className="flex-1 bg-background">
+      <Skeleton className="aspect-video w-full" />
+      <View className="gap-3 p-5">
+        <Skeleton className="h-7 w-48 rounded" />
+        <Skeleton className="h-4 w-32 rounded" />
+        <Skeleton className="mt-2 h-20 w-full rounded-xl" />
+        <Skeleton className="mt-4 h-12 w-full rounded-xl" />
+      </View>
+    </View>
   );
 }
 
-// 텍스트 스켈레톤
 export function TextSkeleton({ lines = 3 }: { lines?: number }) {
   return (
-    <div className="space-y-2">
+    <View className="gap-2">
       {Array.from({ length: lines }).map((_, i) => (
         <Skeleton
           key={i}
-          className={cn(
-            "h-4",
-            i === lines - 1 ? "w-2/3" : "w-full"
-          )}
+          className="h-4 rounded"
+          style={{ width: i === lines - 1 ? "60%" : "100%" }}
         />
       ))}
-    </div>
+    </View>
   );
 }
 
-// 아바타 스켈레톤
-export function AvatarSkeleton({ size = 40 }: { size?: number }) {
+export function AvatarSkeleton({ size = 48 }: { size?: number }) {
   return (
     <Skeleton
       className="rounded-full"
@@ -85,20 +93,18 @@ export function AvatarSkeleton({ size = 40 }: { size?: number }) {
   );
 }
 
-// 카드 스켈레톤
 export function CardSkeleton() {
   return (
-    <div className="rounded-2xl bg-white p-4">
+    <View className="rounded-2xl bg-white p-4">
       <Skeleton className="h-32 w-full rounded-xl" />
-      <Skeleton className="mt-3 h-5 w-3/4" />
-      <Skeleton className="mt-2 h-4 w-1/2" />
-    </div>
+      <View className="mt-3 gap-2">
+        <Skeleton className="h-5 w-3/4 rounded" />
+        <Skeleton className="h-4 w-1/2 rounded" />
+      </View>
+    </View>
   );
 }
 
-// 버튼 스켈레톤
-export function ButtonSkeleton({ className }: SkeletonProps) {
-  return (
-    <Skeleton className={cn("h-12 w-full rounded-xl", className)} />
-  );
+export function ButtonSkeleton() {
+  return <Skeleton className="h-12 w-full rounded-xl" />;
 }

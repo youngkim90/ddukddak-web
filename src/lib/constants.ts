@@ -53,4 +53,4 @@ export const AGE_GROUP_OPTIONS = [
 
 // API 기본 설정
 export const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api";
+  process.env.EXPO_PUBLIC_API_URL || "http://localhost:4000/api";

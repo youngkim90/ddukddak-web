@@ -1,10 +1,12 @@
-"use client";
-
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter } from "expo-router";
+import * as WebBrowser from "expo-web-browser";
+import * as Linking from "expo-linking";
 import { supabase } from "@/lib/supabase";
 import { useAuthStore } from "@/stores/authStore";
 import { usersApi, subscriptionsApi } from "@/lib/api";
+
+WebBrowser.maybeCompleteAuthSession();
 
 export function useAuth() {
   const router = useRouter();
@@ -39,7 +41,7 @@ export function useAuth() {
         setSubscription(null);
       }
 
-      router.push("/home");
+      router.replace("/(tabs)/home");
       return { success: true };
     } catch (err) {
       const message = err instanceof Error ? err.message : "로그인에 실패했습니다";
@@ -81,15 +83,54 @@ export function useAuth() {
     setError(null);
 
     try {
-      const { error: authError } = await supabase.auth.signInWithOAuth({
+      const redirectUrl = Linking.createURL("auth/callback");
+
+      const { data, error: authError } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
+          redirectTo: redirectUrl,
+          skipBrowserRedirect: true,
         },
       });
 
       if (authError) {
         throw new Error(authError.message);
+      }
+
+      if (data?.url) {
+        const result = await WebBrowser.openAuthSessionAsync(
+          data.url,
+          redirectUrl
+        );
+
+        if (result.type === "success" && result.url) {
+          // Extract tokens from URL
+          const url = new URL(result.url);
+          const params = new URLSearchParams(
+            url.hash ? url.hash.substring(1) : url.search.substring(1)
+          );
+          const accessToken = params.get("access_token");
+          const refreshToken = params.get("refresh_token");
+
+          if (accessToken && refreshToken) {
+            await supabase.auth.setSession({
+              access_token: accessToken,
+              refresh_token: refreshToken,
+            });
+
+            const userData = await usersApi.getMe();
+            setUser(userData);
+
+            try {
+              const subscriptionData = await subscriptionsApi.getMe();
+              setSubscription(subscriptionData);
+            } catch {
+              setSubscription(null);
+            }
+
+            router.replace("/(tabs)/home");
+          }
+        }
       }
 
       return { success: true };
@@ -109,7 +150,7 @@ export function useAuth() {
     try {
       await supabase.auth.signOut();
       reset();
-      router.push("/login");
+      router.replace("/login");
       return { success: true };
     } catch (err) {
       const message = err instanceof Error ? err.message : "로그아웃에 실패했습니다";

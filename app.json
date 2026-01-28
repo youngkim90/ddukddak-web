@@ -1,0 +1,42 @@
+{
+  "expo": {
+    "name": "뚝딱동화",
+    "slug": "ddukddak",
+    "version": "0.2.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/ddukddak.png",
+    "scheme": "ddukddak",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/images/ddukddak-splash-high.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#FFF9F0"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.ddukddak.fairytale"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/ddukddak.png",
+        "backgroundColor": "#FFF9F0"
+      },
+      "package": "com.ddukddak.fairytale"
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "single",
+      "favicon": "./assets/images/ddukddak.png"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-font",
+      "expo-secure-store",
+      "expo-web-browser"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}

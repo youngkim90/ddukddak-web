@@ -1,5 +1,3 @@
-"use client";
-
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { progressApi } from "@/lib/api";
 import { useAuthStore } from "@/stores/authStore";
@@ -34,7 +32,6 @@ export function useSaveProgress(storyId: string) {
     mutationFn: (data: { currentPage: number; isCompleted: boolean }) =>
       progressApi.save(storyId, data),
     onSuccess: () => {
-      // 진행률 쿼리 무효화
       queryClient.invalidateQueries({ queryKey: ["progress"] });
       queryClient.invalidateQueries({ queryKey: ["progress", storyId] });
     },

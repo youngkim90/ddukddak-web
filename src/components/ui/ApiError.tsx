@@ -1,71 +1,81 @@
-"use client";
-
-import { useRouter } from "next/navigation";
-import { Button } from "./Button";
+import { View, Text, Pressable } from "react-native";
+import { useRouter } from "expo-router";
+import type { ApiError as ApiErrorType } from "@/types/story";
+import { getErrorMessage } from "@/lib/utils";
 
 interface ApiErrorProps {
-  status?: number;
-  message?: string;
+  error: ApiErrorType;
   onRetry?: () => void;
 }
 
-export function ApiError({ status, message, onRetry }: ApiErrorProps) {
+const errorMessages: Record<number, { emoji: string; title: string; description: string }> = {
+  401: {
+    emoji: "🔒",
+    title: "로그인이 필요해요",
+    description: "이 기능을 사용하려면 로그인해 주세요.",
+  },
+  403: {
+    emoji: "⭐",
+    title: "구독이 필요해요",
+    description: "이 콘텐츠를 보려면 구독이 필요합니다.",
+  },
+  404: {
+    emoji: "🔍",
+    title: "찾을 수 없어요",
+    description: "요청한 콘텐츠를 찾을 수 없습니다.",
+  },
+  500: {
+    emoji: "🔧",
+    title: "서버 오류",
+    description: "잠시 후 다시 시도해 주세요.",
+  },
+};
+
+export function ApiError({ error, onRetry }: ApiErrorProps) {
   const router = useRouter();
 
-  // 에러 상태별 내용
-  const errorContent = {
-    401: {
-      emoji: "🔐",
-      title: "로그인이 필요해요",
-      description: "서비스를 이용하려면 로그인해주세요",
-      action: () => router.push("/login"),
-      actionText: "로그인하기",
-    },
-    403: {
-      emoji: "⭐",
-      title: "구독이 필요해요",
-      description: "프리미엄 구독으로 모든 동화를 즐겨보세요",
-      action: () => router.push("/subscription"),
-      actionText: "구독하기",
-    },
-    404: {
-      emoji: "🔍",
-      title: "찾을 수 없어요",
-      description: "요청하신 내용을 찾을 수 없습니다",
-      action: () => router.back(),
-      actionText: "뒤로가기",
-    },
-    500: {
-      emoji: "😢",
-      title: "서버 오류",
-      description: "잠시 후 다시 시도해주세요",
-      action: onRetry,
-      actionText: "다시 시도",
-    },
+  const errorInfo = errorMessages[error.statusCode] || {
+    emoji: "😢",
+    title: "오류가 발생했어요",
+    description: getErrorMessage(error.message),
   };
 
-  const content = status && status in errorContent
-    ? errorContent[status as keyof typeof errorContent]
-    : {
-        emoji: "😢",
-        title: "오류가 발생했어요",
-        description: message || "잠시 후 다시 시도해주세요",
-        action: onRetry,
-        actionText: "다시 시도",
-      };
+  const handleAction = () => {
+    if (error.statusCode === 401) {
+      router.push("/login");
+    } else if (error.statusCode === 403) {
+      router.push("/subscription");
+    } else if (error.statusCode === 404) {
+      router.back();
+    } else if (onRetry) {
+      onRetry();
+    }
+  };
+
+  const actionLabel =
+    error.statusCode === 401
+      ? "로그인"
+      : error.statusCode === 403
+        ? "구독하기"
+        : error.statusCode === 404
+          ? "돌아가기"
+          : "다시 시도";
 
   return (
-    <div className="flex min-h-[300px] flex-col items-center justify-center p-6">
-      <div className="text-center">
-        <p className="text-6xl" aria-hidden="true">{content.emoji}</p>
-        <h2 className="mt-4 text-lg font-bold text-[#333333]">{content.title}</h2>
-        <p className="mt-2 text-sm text-[#888888]">{content.description}</p>
-        {content.action && (
-          <Button onClick={content.action} className="mt-6">
-            {content.actionText}
-          </Button>
-        )}
-      </div>
-    </div>
+    <View className="flex-1 items-center justify-center p-6">
+      <Text className="text-4xl">{errorInfo.emoji}</Text>
+      <Text className="mt-4 text-lg font-bold text-text-main">
+        {errorInfo.title}
+      </Text>
+      <Text className="mt-2 text-center text-sm text-text-sub">
+        {errorInfo.description}
+      </Text>
+      <Pressable
+        onPress={handleAction}
+        className="mt-6 rounded-xl bg-primary px-6 py-3"
+      >
+        <Text className="font-bold text-white">{actionLabel}</Text>
+      </Pressable>
+    </View>
   );
 }

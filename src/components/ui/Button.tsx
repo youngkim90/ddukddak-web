@@ -1,59 +1,82 @@
-import { ButtonHTMLAttributes, forwardRef } from "react";
+import { Pressable, Text, ActivityIndicator } from "react-native";
+import { cn } from "@/lib/utils";
 
-export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
+interface ButtonProps {
+  children: React.ReactNode;
+  onPress?: () => void;
   variant?: "primary" | "secondary" | "ghost" | "kakao" | "google";
   size?: "sm" | "md" | "lg";
   fullWidth?: boolean;
+  disabled?: boolean;
+  loading?: boolean;
+  className?: string;
 }
 
-export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
-  (
-    {
-      variant = "primary",
-      size = "md",
-      fullWidth = false,
-      className = "",
-      disabled,
-      children,
-      ...props
-    },
-    ref
-  ) => {
-    const baseStyles =
-      "inline-flex items-center justify-center font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed";
+const variantStyles = {
+  primary: "bg-primary",
+  secondary: "bg-[#5AC8FA]",
+  ghost: "bg-transparent",
+  kakao: "bg-[#FEE500]",
+  google: "bg-white border border-[#E0E0E0]",
+};
 
-    const variants = {
-      primary:
-        "bg-[#FF9500] text-white hover:bg-[#E68600] focus:ring-[#FF9500]",
-      secondary:
-        "bg-[#5AC8FA] text-white hover:bg-[#4AB8EA] focus:ring-[#5AC8FA]",
-      ghost:
-        "bg-transparent text-[#888888] hover:text-[#333333] focus:ring-[#888888]",
-      kakao:
-        "bg-[#FEE500] text-[#333333] hover:bg-[#E6CF00] focus:ring-[#FEE500]",
-      google:
-        "bg-white text-[#333333] border border-[#E5E5E5] hover:bg-[#F5F5F5] focus:ring-[#E5E5E5]",
-    };
+const variantTextStyles = {
+  primary: "text-white font-bold",
+  secondary: "text-white font-bold",
+  ghost: "text-text-sub",
+  kakao: "text-[#191919] font-bold",
+  google: "text-text-main font-bold",
+};
 
-    const sizes = {
-      sm: "h-10 px-4 text-sm rounded-lg",
-      md: "h-12 px-6 text-base rounded-xl",
-      lg: "h-14 px-8 text-lg rounded-xl",
-    };
+const sizeStyles = {
+  sm: "py-2 px-4 rounded-lg",
+  md: "py-3 px-5 rounded-xl",
+  lg: "py-4 px-6 rounded-xl",
+};
 
-    const widthClass = fullWidth ? "w-full" : "";
+const sizeTextStyles = {
+  sm: "text-sm",
+  md: "text-base",
+  lg: "text-base",
+};
 
-    return (
-      <button
-        ref={ref}
-        className={`${baseStyles} ${variants[variant]} ${sizes[size]} ${widthClass} ${className}`}
-        disabled={disabled}
-        {...props}
-      >
-        {children}
-      </button>
-    );
-  }
-);
-
-Button.displayName = "Button";
+export function Button({
+  children,
+  onPress,
+  variant = "primary",
+  size = "md",
+  fullWidth = false,
+  disabled = false,
+  loading = false,
+  className,
+}: ButtonProps) {
+  return (
+    <Pressable
+      onPress={onPress}
+      disabled={disabled || loading}
+      className={cn(
+        "items-center justify-center flex-row",
+        variantStyles[variant],
+        sizeStyles[size],
+        fullWidth && "w-full",
+        (disabled || loading) && "opacity-50",
+        className
+      )}
+    >
+      {loading ? (
+        <ActivityIndicator
+          size="small"
+          color={variant === "primary" ? "#FFFFFF" : "#333333"}
+        />
+      ) : typeof children === "string" ? (
+        <Text
+          className={cn(variantTextStyles[variant], sizeTextStyles[size])}
+        >
+          {children}
+        </Text>
+      ) : (
+        children
+      )}
+    </Pressable>
+  );
+}
