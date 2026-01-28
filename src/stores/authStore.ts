@@ -1,5 +1,6 @@
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
+import { persist, createJSONStorage } from "zustand/middleware";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import type { User, Subscription } from "@/types/story";
 
 interface AuthState {
@@ -25,6 +26,7 @@ export const useAuthStore = create<AuthState>()(
     }),
     {
       name: "auth-storage",
+      storage: createJSONStorage(() => AsyncStorage),
       partialize: (state) => ({ user: state.user, subscription: state.subscription }),
     }
   )

@@ -1,17 +1,23 @@
-"use client";
+import { View, Text, Pressable } from "react-native";
+import { useRouter } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { ChevronLeft } from "lucide-react-native";
 
-import { ReactNode } from "react";
-import { useRouter } from "next/navigation";
-
-export interface HeaderProps {
-  title?: string;
+interface HeaderProps {
+  title: string;
   showBack?: boolean;
   onBack?: () => void;
-  rightAction?: ReactNode;
+  rightAction?: React.ReactNode;
 }
 
-export function Header({ title, showBack = false, onBack, rightAction }: HeaderProps) {
+export function Header({
+  title,
+  showBack = false,
+  onBack,
+  rightAction,
+}: HeaderProps) {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
 
   const handleBack = () => {
     if (onBack) {
@@ -22,46 +28,32 @@ export function Header({ title, showBack = false, onBack, rightAction }: HeaderP
   };
 
   return (
-    <header className="sticky top-0 z-10 flex h-14 items-center justify-between bg-white px-4">
-      {/* Left: Back button or spacer */}
-      <div className="w-10">
-        {showBack && (
-          <button
-            type="button"
-            onClick={handleBack}
-            className="flex size-10 items-center justify-center text-[#333333]"
-            aria-label="뒤로 가기"
-          >
-            <ChevronLeftIcon className="size-6" />
-          </button>
-        )}
-      </div>
-
-      {/* Center: Title */}
-      {title && (
-        <h1 className="text-lg font-bold text-[#333333]">{title}</h1>
-      )}
-
-      {/* Right: Action or spacer */}
-      <div className="flex w-10 justify-end">{rightAction}</div>
-    </header>
-  );
-}
-
-function ChevronLeftIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      className={className}
-      fill="none"
-      stroke="currentColor"
-      viewBox="0 0 24 24"
+    <View
+      className="flex-row items-center bg-white px-4 py-3"
+      style={{ paddingTop: insets.top + 12 }}
     >
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={2}
-        d="M15 19l-7-7 7-7"
-      />
-    </svg>
+      {/* Left spacer / back button */}
+      <View className="w-10">
+        {showBack && (
+          <Pressable
+            onPress={handleBack}
+            className="h-10 w-10 items-center justify-center rounded-full"
+            accessibilityLabel="뒤로가기"
+          >
+            <ChevronLeft size={24} color="#333333" />
+          </Pressable>
+        )}
+      </View>
+
+      {/* Centered title */}
+      <Text className="flex-1 text-center text-lg font-bold text-text-main">
+        {title}
+      </Text>
+
+      {/* Right spacer / action */}
+      <View className="w-10 items-end">
+        {rightAction}
+      </View>
+    </View>
   );
 }

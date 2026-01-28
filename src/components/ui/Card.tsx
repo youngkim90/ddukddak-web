@@ -1,22 +1,26 @@
-import { HTMLAttributes, forwardRef } from "react";
+import { View } from "react-native";
+import { cn } from "@/lib/utils";
 
-export interface CardProps extends HTMLAttributes<HTMLDivElement> {
+interface CardProps {
+  children: React.ReactNode;
   variant?: "default" | "elevated";
+  className?: string;
 }
 
-export const Card = forwardRef<HTMLDivElement, CardProps>(
-  ({ variant = "default", className = "", children, ...props }, ref) => {
-    const variants = {
-      default: "bg-white rounded-2xl",
-      elevated: "bg-white rounded-2xl shadow-md",
-    };
-
-    return (
-      <div ref={ref} className={`${variants[variant]} ${className}`} {...props}>
-        {children}
-      </div>
-    );
-  }
-);
-
-Card.displayName = "Card";
+export function Card({
+  children,
+  variant = "default",
+  className,
+}: CardProps) {
+  return (
+    <View
+      className={cn(
+        "rounded-2xl bg-white p-4",
+        variant === "elevated" && "shadow-md",
+        className
+      )}
+    >
+      {children}
+    </View>
+  );
+}

@@ -1,5 +1,3 @@
-"use client";
-
 import { useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { useAuthStore } from "@/stores/authStore";
@@ -17,12 +15,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         } = await supabase.auth.getSession();
 
         if (session) {
-          // 사용자 정보 조회
           try {
             const user = await usersApi.getMe();
             setUser(user);
 
-            // 구독 정보 조회
             try {
               const subscription = await subscriptionsApi.getMe();
               setSubscription(subscription);
@@ -56,12 +52,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           const subscription = await subscriptionsApi.getMe();
           setSubscription(subscription);
         } catch {
-          // 사용자 정보 조회 실패 시 무시 (새 사용자일 수 있음)
+          // 사용자 정보 조회 실패 시 무시
         }
       } else if (event === "SIGNED_OUT") {
         reset();
-      } else if (event === "TOKEN_REFRESHED") {
-        // 토큰 갱신 시 별도 처리 불필요 (Supabase가 자동 처리)
       }
     });
 

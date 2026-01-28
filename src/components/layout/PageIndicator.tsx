@@ -1,19 +1,23 @@
-export interface PageIndicatorProps {
+import { View } from "react-native";
+import { cn } from "@/lib/utils";
+
+interface PageIndicatorProps {
   total: number;
   current: number;
 }
 
 export function PageIndicator({ total, current }: PageIndicatorProps) {
   return (
-    <div className="flex items-center justify-center gap-2">
-      {Array.from({ length: total }, (_, index) => (
-        <div
-          key={index}
-          className={`size-2 rounded-full transition-colors ${
-            index === current ? "bg-[#FF9500]" : "bg-[#E5E5E5]"
-          }`}
+    <View className="flex-row items-center justify-center gap-2">
+      {Array.from({ length: total }).map((_, i) => (
+        <View
+          key={i}
+          className={cn(
+            "h-2 w-2 rounded-full",
+            i === current ? "bg-primary" : "bg-[#D9D9D9]"
+          )}
         />
       ))}
-    </div>
+    </View>
   );
 }

@@ -1,35 +1,32 @@
-"use client";
+import React from "react";
+import { View, Text, Pressable } from "react-native";
 
-import { Component, ReactNode } from "react";
-import { Button } from "./Button";
-
-interface Props {
-  children: ReactNode;
-  fallback?: ReactNode;
+interface ErrorBoundaryProps {
+  children: React.ReactNode;
+  fallback?: React.ReactNode;
 }
 
-interface State {
+interface ErrorBoundaryState {
   hasError: boolean;
-  error: Error | null;
+  error?: Error;
 }
 
-export class ErrorBoundary extends Component<Props, State> {
-  constructor(props: Props) {
+export class ErrorBoundary extends React.Component<
+  ErrorBoundaryProps,
+  ErrorBoundaryState
+> {
+  constructor(props: ErrorBoundaryProps) {
     super(props);
-    this.state = { hasError: false, error: null };
+    this.state = { hasError: false };
   }
 
-  static getDerivedStateFromError(error: Error): State {
+  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
     return { hasError: true, error };
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error("ErrorBoundary caught an error:", error, errorInfo);
+    console.error("ErrorBoundary caught:", error, errorInfo);
   }
-
-  handleRetry = () => {
-    this.setState({ hasError: false, error: null });
-  };
 
   render() {
     if (this.state.hasError) {
@@ -38,20 +35,21 @@ export class ErrorBoundary extends Component<Props, State> {
       }
 
       return (
-        <div className="flex min-h-[300px] flex-col items-center justify-center p-6">
-          <div className="text-center">
-            <p className="text-6xl" aria-hidden="true">😢</p>
-            <h2 className="mt-4 text-lg font-bold text-[#333333]">
-              문제가 발생했어요
-            </h2>
-            <p className="mt-2 text-sm text-[#888888]">
-              잠시 후 다시 시도해주세요
-            </p>
-            <Button onClick={this.handleRetry} className="mt-6">
-              다시 시도
-            </Button>
-          </div>
-        </div>
+        <View className="flex-1 items-center justify-center bg-background p-6">
+          <Text className="text-4xl">😢</Text>
+          <Text className="mt-4 text-lg font-bold text-text-main">
+            문제가 발생했어요
+          </Text>
+          <Text className="mt-2 text-center text-sm text-text-sub">
+            잠시 후 다시 시도해 주세요
+          </Text>
+          <Pressable
+            onPress={() => this.setState({ hasError: false })}
+            className="mt-6 rounded-xl bg-primary px-6 py-3"
+          >
+            <Text className="font-bold text-white">다시 시도</Text>
+          </Pressable>
+        </View>
       );
     }
 

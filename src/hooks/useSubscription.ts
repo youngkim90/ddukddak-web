@@ -1,5 +1,3 @@
-"use client";
-
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { subscriptionsApi } from "@/lib/api";
 import { useAuthStore } from "@/stores/authStore";
@@ -31,7 +29,6 @@ export function useCancelSubscription() {
   return useMutation({
     mutationFn: () => subscriptionsApi.cancel(),
     onSuccess: () => {
-      // 구독 정보 무효화
       queryClient.invalidateQueries({ queryKey: ["mySubscription"] });
       setSubscription(null);
     },

@@ -1,0 +1,116 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * 뚝딱동화 글로벌 스타일
+ *
+ * 토스/카카오 스타일의 모바일 우선 웹앱
+ * - 일관된 타이포그래피
+ * - 부드러운 애니메이션
+ * - 접근성 고려
+ */
+
+@layer base {
+  /* CSS 변수 (디자인 토큰) */
+  :root {
+    --color-primary: #FF9500;
+    --color-secondary: #5AC8FA;
+    --color-background: #FFF9F0;
+    --color-surface: #FFFFFF;
+    --color-bg-outer: #E8E4DE;
+    --color-text-main: #333333;
+    --color-text-sub: #888888;
+    --color-error: #FF3B30;
+    --color-success: #34C759;
+
+    /* 레이아웃 */
+    --container-max-width: 480px;
+    --container-max-height: 932px;
+    --container-radius: 24px;
+
+    /* 애니메이션 */
+    --transition-fast: 150ms ease;
+    --transition-normal: 250ms ease;
+    --transition-slow: 350ms ease;
+  }
+
+  /* 기본 폰트 설정 */
+  html {
+    font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* 웹 스크롤바 스타일링 (모바일 앱 느낌) */
+  ::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 2px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(0, 0, 0, 0.3);
+  }
+
+  /* 선택 영역 스타일 */
+  ::selection {
+    background: rgba(255, 149, 0, 0.2);
+    color: var(--color-text-main);
+  }
+
+  /* 포커스 스타일 (접근성) */
+  :focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+  }
+}
+
+@layer components {
+  /* 버튼 호버/액티브 트랜지션 */
+  .btn-transition {
+    transition: transform var(--transition-fast), opacity var(--transition-fast);
+  }
+
+  .btn-transition:hover {
+    opacity: 0.9;
+  }
+
+  .btn-transition:active {
+    transform: scale(0.98);
+  }
+}
+
+@layer utilities {
+  /* 텍스트 줄임 */
+  .line-clamp-1 {
+    display: -webkit-box;
+    -webkit-line-clamp: 1;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .line-clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  /* 안전 영역 패딩 */
+  .safe-area-top {
+    padding-top: env(safe-area-inset-top);
+  }
+
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
