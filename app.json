@@ -4,7 +4,7 @@
     "slug": "ddukddak",
     "version": "0.2.0",
     "orientation": "portrait",
-    "icon": "./assets/images/ddukddak.png",
+    "icon": "./assets/images/ddukddak-icon.png",
     "scheme": "ddukddak",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
@@ -19,7 +19,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/ddukddak.png",
+        "foregroundImage": "./assets/images/ddukddak-icon.png",
         "backgroundColor": "#FFF9F0"
       },
       "package": "com.ddukddak.fairytale"
