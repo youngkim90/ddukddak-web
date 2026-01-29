@@ -33,10 +33,23 @@
       "expo-router",
       "expo-font",
       "expo-secure-store",
-      "expo-web-browser"
+      "expo-web-browser",
+      "expo-updates"
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "eas": {
+        "projectId": "79193767-5875-4eb4-ac10-46a97c8a00a3"
+      },
+      "router": {}
+    },
+    "updates": {
+      "url": "https://u.expo.dev/79193767-5875-4eb4-ac10-46a97c8a00a3"
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
     }
   }
 }
