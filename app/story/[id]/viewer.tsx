@@ -10,7 +10,7 @@ import {
   Platform,
   GestureResponderEvent,
 } from "react-native";
-import Slider from "@react-native-community/slider";
+import { VolumeSlider } from "@/components/ui/VolumeSlider";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Image } from "expo-image";
 import { StatusBar } from "expo-status-bar";
@@ -337,30 +337,22 @@ export default function ViewerScreen() {
             {/* TTS Volume */}
             <View className="mb-4">
               <Text className="mb-2 text-sm text-text-sub">TTS 볼륨</Text>
-              <Slider
+              <VolumeSlider
                 value={ttsVolume}
                 onValueChange={setTtsVolume}
                 minimumValue={0}
                 maximumValue={100}
-                step={1}
-                minimumTrackTintColor="#FF9500"
-                maximumTrackTintColor="#E0E0E0"
-                thumbTintColor="#FF9500"
               />
             </View>
 
             {/* BGM Volume */}
             <View className="mb-4">
               <Text className="mb-2 text-sm text-text-sub">BGM 볼륨</Text>
-              <Slider
+              <VolumeSlider
                 value={bgmVolume}
                 onValueChange={setBgmVolume}
                 minimumValue={0}
                 maximumValue={100}
-                step={1}
-                minimumTrackTintColor="#FF9500"
-                maximumTrackTintColor="#E0E0E0"
-                thumbTintColor="#FF9500"
               />
             </View>
 
