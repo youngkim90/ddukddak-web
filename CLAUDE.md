@@ -76,7 +76,7 @@ Task 2-8. EAS 통합 배포
 └── Android Production 빌드                 [##########] 100%
 ```
 
-- **Web URL**: https://ddukddak--5ss9spp97k.expo.app
+- **Web URL**: https://ddukddak.expo.app
 - **Backend API**: https://ddukddak-api-2lb4yqjazq-du.a.run.app/api
 - **EAS 프로젝트**: https://expo.dev/accounts/0kim/projects/ddukddak
 
