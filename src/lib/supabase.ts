@@ -24,6 +24,8 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     storage: Platform.OS !== "web" ? ExpoSecureStoreAdapter : undefined,
     autoRefreshToken: true,
     persistSession: true,
-    detectSessionInUrl: false,
+    // 웹: URL 해시에서 OAuth 토큰 자동 감지 (리다이렉트 방식)
+    // 네이티브: openAuthSessionAsync에서 수동 추출
+    detectSessionInUrl: Platform.OS === "web",
   },
 });

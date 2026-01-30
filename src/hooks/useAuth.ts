@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Platform } from "react-native";
 import { useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import * as Linking from "expo-linking";
@@ -6,7 +7,10 @@ import { supabase } from "@/lib/supabase";
 import { useAuthStore } from "@/stores/authStore";
 import { usersApi, subscriptionsApi } from "@/lib/api";
 
-WebBrowser.maybeCompleteAuthSession();
+// 네이티브에서만 팝업 세션 완료 처리 (웹은 리다이렉트 방식 사용)
+if (Platform.OS !== "web") {
+  WebBrowser.maybeCompleteAuthSession();
+}
 
 export function useAuth() {
   const router = useRouter();
@@ -85,6 +89,24 @@ export function useAuth() {
     try {
       const redirectUrl = Linking.createURL("auth/callback");
 
+      if (Platform.OS === "web") {
+        // 웹: 페이지 리다이렉트 방식 (COOP 정책으로 팝업 통신 불가)
+        const { error: authError } = await supabase.auth.signInWithOAuth({
+          provider,
+          options: {
+            redirectTo: redirectUrl,
+          },
+        });
+
+        if (authError) {
+          throw new Error(authError.message);
+        }
+
+        // 리다이렉트되므로 이 아래 코드는 실행되지 않음
+        return { success: true };
+      }
+
+      // 네이티브: 팝업(인앱 브라우저) 방식
       const { data, error: authError } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
@@ -104,7 +126,6 @@ export function useAuth() {
         );
 
         if (result.type === "success" && result.url) {
-          // Extract tokens from URL
           const url = new URL(result.url);
           const params = new URLSearchParams(
             url.hash ? url.hash.substring(1) : url.search.substring(1)
