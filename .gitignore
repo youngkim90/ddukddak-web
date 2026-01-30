@@ -46,7 +46,6 @@ coverage/
 .claude/
 .mcp.json
 .cclsp.json
-CLAUDE.md
 CLAUDE.local.md
 
 # playwright mcp
