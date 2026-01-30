@@ -29,6 +29,7 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
     const inPublicGroup =
       segments[0] === undefined ||
       segments[0] === "onboarding" ||
+      segments[0] === "auth" ||
       inAuthGroup;
 
     if (!user && !inPublicGroup) {
