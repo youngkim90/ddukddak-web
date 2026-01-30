@@ -1,7 +1,8 @@
 name: EAS Production Build
 
 on:
-  push:
+  pull_request:
+    types: [closed]
     branches: [main]
     paths-ignore:
       - '*.md'
@@ -19,6 +20,7 @@ jobs:
   build-android:
     name: Build Android Production
     runs-on: ubuntu-latest
+    if: github.event.pull_request.merged == true
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -44,7 +46,7 @@ jobs:
   build-ios:
     name: Build iOS Production
     runs-on: ubuntu-latest
-    if: false  # Enable when Apple Developer account is ready
+    if: false  # Enable when Apple Developer account is ready (also add: github.event.pull_request.merged == true)
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -70,6 +72,7 @@ jobs:
   deploy-web:
     name: Deploy Web Production
     runs-on: ubuntu-latest
+    if: github.event.pull_request.merged == true
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
