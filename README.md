@@ -1,8 +1,19 @@
-# 뚝딱동화 (ddukddak-app)
+# 뚝딱동화 (ddukddak)
 
-> AI 기반 다국어 동화 서비스 - iOS / Android / Web
+> AI 기반 맞춤형 동화 서비스 - iOS / Android / Web
 
-아이들을 위한 맞춤형 AI 동화 서비스입니다. 한국어/영어 TTS 음성과 배경음악과 함께 동화를 즐길 수 있습니다.
+아이들을 위한 맞춤형 AI 동화 서비스입니다. 연령별 맞춤 동화를 이미지와 텍스트로 구성된 뷰어를 통해 몰입감 있는 독서 경험을 제공합니다.
+
+**Web**: https://ddukddak.expo.app
+
+## 주요 기능
+
+- 연령별 맞춤 동화 추천 (카테고리: 전래, 교훈, 모험, 가정)
+- 동화 뷰어 (이미지 + 자막, 스와이프, 자동 넘기기, 진행률 저장)
+- 다국어 지원 (한국어 / 영어 전환)
+- 소셜 로그인 (Google, Kakao OAuth)
+- 구독 시스템 (무료 / 월간 / 연간)
+- 크로스플랫폼 (iOS, Android, Web)
 
 ## 기술 스택
 
@@ -13,7 +24,7 @@
 | Styling | NativeWind 4 (Tailwind CSS 3) |
 | State | Zustand 5 |
 | Server State | TanStack Query 5 |
-| Auth | Supabase Auth |
+| Auth | Supabase Auth (Google, Kakao OAuth) |
 | Image | expo-image |
 | Animation | React Native Reanimated |
 | Icons | Lucide React Native |
@@ -30,17 +41,15 @@ npm run dev
 # 웹 브라우저로 실행
 npm run dev:web
 
-# Android
+# Android / iOS
 npm run dev:android
-
-# iOS
 npm run dev:ios
 
 # TypeScript 검사
 npm run ts:check
 ```
 
-## 환경 변수
+### 환경 변수
 
 프로젝트 루트에 `.env` 파일 생성:
 
@@ -57,16 +66,11 @@ app/                            # Expo Router (파일 기반 라우팅)
 ├── _layout.tsx                 # 루트 레이아웃 (폰트, Providers, 인증 가드)
 ├── index.tsx                   # 스플래시
 ├── onboarding.tsx              # 온보딩
-├── login.tsx                   # 로그인
-├── signup.tsx                  # 회원가입
+├── login.tsx / signup.tsx      # 인증
 ├── (tabs)/                     # 탭 네비게이터
-│   ├── _layout.tsx             # 홈 / 동화목록 / 설정
-│   ├── home.tsx
-│   ├── stories.tsx
-│   └── settings/
-│       ├── index.tsx           # 설정
-│       ├── profile.tsx         # 프로필 관리
-│       └── subscription.tsx    # 구독 관리
+│   ├── home.tsx                # 홈 (배너 + 카테고리별 동화)
+│   ├── stories.tsx             # 동화 목록 (카테고리/연령 필터)
+│   └── settings/               # 설정 / 프로필 / 구독관리
 ├── story/
 │   ├── [id].tsx                # 동화 상세
 │   └── [id]/viewer.tsx         # 동화 뷰어
@@ -85,39 +89,60 @@ src/
 └── types/                      # TypeScript 타입 정의
 ```
 
-## 화면 목록
+## 화면 목록 (13개)
 
 | Route | 화면 |
 |-------|------|
 | `/` | 스플래시 |
 | `/onboarding` | 온보딩 (3 슬라이드) |
-| `/login` | 로그인 (이메일 + 카카오/구글 OAuth) |
+| `/login` | 로그인 (이메일 + Google/Kakao OAuth) |
 | `/signup` | 회원가입 |
 | `/(tabs)/home` | 홈 (배너 + 카테고리별 동화) |
 | `/(tabs)/stories` | 동화 목록 (카테고리/연령 필터) |
-| `/story/[id]` | 동화 상세 (한/영 전환, 읽기) |
-| `/story/[id]/viewer` | 동화 뷰어 (스와이프, TTS/BGM, 자동넘기기) |
+| `/story/[id]` | 동화 상세 (한/영 전환) |
+| `/story/[id]/viewer` | 동화 뷰어 (스와이프, 자동넘기기) |
 | `/subscription` | 구독 안내 (무료/월간/연간) |
 | `/payment` | 결제 |
 | `/(tabs)/settings` | 설정 |
 | `/(tabs)/settings/profile` | 프로필 관리 |
 | `/(tabs)/settings/subscription` | 구독 관리 |
 
-## 주요 기능
+## 배포
 
-- **동화 뷰어**: 스와이프 넘기기, TTS 음성, BGM, 자동 넘기기, 진행률 저장
-- **다국어 지원**: 한국어/영어 전환
-- **구독 시스템**: 무료/월간/연간 플랜
-- **인증**: 이메일 로그인, 카카오/구글 OAuth
-- **크로스플랫폼**: iOS, Android, Web 동시 지원
+| 환경 | URL |
+|------|-----|
+| Web | https://ddukddak.expo.app |
+| Backend API | https://ddukddak-api-2lb4yqjazq-du.a.run.app/api |
+| EAS 프로젝트 | https://expo.dev/accounts/0kim/projects/ddukddak |
+
+### CI/CD (GitHub Actions)
+
+| 트리거 | 동작 |
+|--------|------|
+| PR 생성 | TypeScript 검사 + Web 빌드 체크 |
+| main 머지 | Web 프로덕션 배포 + Android AAB 빌드 |
+
+### 수동 배포
+
+```bash
+# Web 프로덕션 배포
+npx expo export --platform web
+eas deploy --prod
+
+# Android 빌드
+eas build --platform android --profile production
+```
 
 ## 개발 현황
 
 - [x] Expo 전환 완료 (Next.js -> Expo Router)
 - [x] 전체 13화면 구현
 - [x] 백엔드 API 연동 (Supabase Auth + REST API)
+- [x] Google/Kakao OAuth 인증
+- [x] EAS 배포 (Web + Android)
+- [x] CI/CD (GitHub Actions)
 - [x] 접근성 지원
-- [ ] 인앱 결제 연동
+- [ ] 토스페이먼츠 결제 연동
 - [ ] Google Play 출시
 
 ## 관련 문서
