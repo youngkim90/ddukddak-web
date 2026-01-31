@@ -80,6 +80,17 @@ Task 2-8. EAS 통합 배포
 - **Backend API**: https://ddukddak-api-2lb4yqjazq-du.a.run.app/api
 - **EAS 프로젝트**: https://expo.dev/accounts/0kim/projects/ddukddak
 
+**OAuth 인증 - 완료**
+
+```
+Google OAuth 웹 리다이렉트 방식 전환       [##########] 100%
+├── 웹: 페이지 리다이렉트 방식 (COOP 정책 대응)
+├── 네이티브: 팝업(인앱 브라우저) 방식 유지
+├── Supabase redirect URLs 설정
+├── 백엔드 CORS origin 추가
+└── 프로덕션 테스트 완료
+```
+
 **다음 단계: 결제 연동 + 앱 출시 (Google Play 우선)**
 
 ```
@@ -117,7 +128,7 @@ Task 2-8. EAS 통합 배포
 | Styling | NativeWind (Tailwind CSS 3) | 4.x |
 | State | Zustand | 5.x |
 | Server State | TanStack Query | 5.x |
-| Auth | Supabase Auth | 2.x |
+| Auth | Supabase Auth (OAuth: Google, Kakao) | 2.x |
 | Image | expo-image | 2.x |
 | Animation | React Native Reanimated | 3.x |
 | Icons | Lucide React Native | 0.475.x |
@@ -214,7 +225,7 @@ app/                            # Expo Router (파일 기반 라우팅)
 │   └── [id]/viewer.tsx         # 동화 뷰어
 ├── subscription.tsx
 ├── payment.tsx
-└── auth/callback.tsx           # OAuth 딥링크 핸들러
+└── auth/callback.tsx           # OAuth 콜백 (웹: URL해시 세션감지, 네이티브: 딥링크)
 
 src/
 ├── components/
@@ -385,9 +396,9 @@ eas build --platform android --profile preview
 # Production AAB 빌드
 eas build --platform android --profile production
 
-# Web 배포
+# Web 배포 (프로덕션)
 npx expo export --platform web
-eas deploy
+eas deploy --prod
 ```
 
 ### 참고 문서
@@ -406,7 +417,42 @@ eas deploy
 | `nativewind` 4.2.x Babel 에러 | `css-interop@0.2.1`이 worklets/plugin 요구 | `nativewind@4.1.23` 고정 |
 | `eas hosting:deploy` not found | 명령어 변경됨 | `eas deploy` 사용 |
 | 아이콘 not square | EAS 빌드 시 정사각형 필수 | 940x940 정사각형 이미지 사용 |
+| 웹 Google OAuth 팝업 실패 | COOP 헤더가 `window.opener.postMessage()` 차단 | 웹은 리다이렉트 방식, 네이티브는 팝업 방식으로 분리 |
+| `eas deploy`가 preview 배포됨 | `--prod` 플래그 누락 | `eas deploy --prod` 사용 |
+| 배포 후 이전 번들 로드됨 | Cloudflare CDN 캐시 (`max-age=3600`) | 새 배포 시 자동 갱신 또는 최대 1시간 대기 |
+| 프로덕션에서 `localhost` API 호출 | `.env`의 값이 번들에 빌드타임에 고정됨 | GitHub Actions는 secrets 사용 (`.env` gitignore 됨) |
+| 프로덕션 API CORS 에러 | 백엔드 CORS origin에 프로덕션 URL 미등록 | `https://ddukddak.expo.app` origin 추가 |
 
 ---
 
-*마지막 업데이트: 2026-01-30 (EAS 배포 완료, 트러블슈팅 추가)*
+## OAuth 인증 가이드
+
+### 플랫폼별 OAuth 동작 방식
+
+| 플랫폼 | 방식 | 이유 |
+|--------|------|------|
+| **웹** | 페이지 리다이렉트 | Google COOP 헤더가 팝업 통신 차단 |
+| **네이티브** | 인앱 브라우저 (팝업) | `expo-web-browser`의 `openAuthSessionAsync` 사용 |
+
+### 핵심 설정
+
+| 파일 | 설정 | 설명 |
+|------|------|------|
+| `src/lib/supabase.ts` | `detectSessionInUrl: Platform.OS === "web"` | 웹에서 URL 해시의 OAuth 토큰 자동 감지 |
+| `src/hooks/useAuth.ts` | 웹: `skipBrowserRedirect` 없음 / 네이티브: `skipBrowserRedirect: true` | 플랫폼별 OAuth 플로우 분기 |
+| `app/auth/callback.tsx` | 웹: `getSession()` / 네이티브: `setSession(params)` | 콜백 처리 분기 |
+
+### Supabase 설정 (Dashboard)
+
+| 항목 | 값 |
+|------|-----|
+| Site URL | `https://ddukddak.expo.app` |
+| Redirect URLs | `https://ddukddak.expo.app/**`, `ddukddak://auth/callback`, `http://localhost:3000/**` |
+
+### 백엔드 CORS
+
+프로덕션 API CORS 허용 origin: `https://ddukddak.expo.app`
+
+---
+
+*마지막 업데이트: 2026-01-30 (OAuth 웹 리다이렉트 전환, EAS 배포 완료)*
