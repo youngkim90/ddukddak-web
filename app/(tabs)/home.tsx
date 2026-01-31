@@ -13,7 +13,7 @@ import { HomeHeader } from "@/components/layout";
 import { StoryCard, StoryCardSkeleton } from "@/components/ui";
 import { useStoriesByCategory, useStories } from "@/hooks/useStories";
 import { useIsSubscribed } from "@/stores/authStore";
-import { CATEGORY_LABELS } from "@/lib/constants";
+import { CATEGORY_LABELS, FREE_MODE } from "@/lib/constants";
 import { getOptimizedImageUrl } from "@/lib/utils";
 import type { StoryCategory } from "@/types/story";
 
@@ -66,9 +66,9 @@ function StoryCategorySection({ category }: { category: StoryCategory }) {
             <StoryCard
               title={item.titleKo}
               thumbnailUrl={getOptimizedImageUrl(item.thumbnailUrl, 300)}
-              isLocked={!item.isFree && !isSubscribed}
+              isLocked={!FREE_MODE && !item.isFree && !isSubscribed}
               onPress={() => {
-                if (!item.isFree && !isSubscribed) {
+                if (!FREE_MODE && !item.isFree && !isSubscribed) {
                   router.push("/subscription");
                 } else {
                   router.push(`/story/${item.id}`);

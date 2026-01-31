@@ -4,7 +4,7 @@ import { useRouter, useLocalSearchParams } from "expo-router";
 import { StoryCard, StoryCardSkeleton } from "@/components/ui";
 import { useStories } from "@/hooks/useStories";
 import { useIsSubscribed } from "@/stores/authStore";
-import { CATEGORY_OPTIONS, AGE_GROUP_OPTIONS } from "@/lib/constants";
+import { CATEGORY_OPTIONS, AGE_GROUP_OPTIONS, FREE_MODE } from "@/lib/constants";
 import { getOptimizedImageUrl } from "@/lib/utils";
 
 export default function StoriesScreen() {
@@ -131,10 +131,10 @@ export default function StoriesScreen() {
               <StoryCard
                 title={item.titleKo}
                 thumbnailUrl={getOptimizedImageUrl(item.thumbnailUrl, 300)}
-                isLocked={!item.isFree && !isSubscribed}
+                isLocked={!FREE_MODE && !item.isFree && !isSubscribed}
                 className="w-full"
                 onPress={() => {
-                  if (!item.isFree && !isSubscribed) {
+                  if (!FREE_MODE && !item.isFree && !isSubscribed) {
                     router.push("/subscription");
                   } else {
                     router.push(`/story/${item.id}`);

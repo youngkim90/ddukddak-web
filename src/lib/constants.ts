@@ -51,6 +51,10 @@ export const AGE_GROUP_OPTIONS = [
   { value: "7+", label: "7세 이상" },
 ] as const;
 
+// MVP 무료 모드 (추후 구독 기능 활성화 시 false로 변경)
+export const FREE_MODE =
+  process.env.EXPO_PUBLIC_FREE_MODE !== "false";
+
 // API 기본 설정
 export const API_BASE_URL =
   process.env.EXPO_PUBLIC_API_URL || "http://localhost:4000/api";
