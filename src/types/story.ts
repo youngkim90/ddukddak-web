@@ -26,6 +26,7 @@ export interface StoryPage {
   textEn: string;
   audioUrlKo?: string;
   audioUrlEn?: string;
+  lottieUrl?: string;
 }
 
 export interface StoryPagesResponse {

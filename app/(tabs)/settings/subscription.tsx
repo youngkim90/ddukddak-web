@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { View, Text, ScrollView, Pressable, Modal, Alert, ActivityIndicator } from "react-native";
 import { useRouter } from "expo-router";
-import { Check } from "lucide-react-native";
+import { Check, Gift } from "lucide-react-native";
 import { Header } from "@/components/layout";
 import { Button, Skeleton } from "@/components/ui";
 import { useMySubscription, useCancelSubscription } from "@/hooks/useSubscription";
+import { FREE_MODE } from "@/lib/constants";
 
 const planLabels: Record<string, string> = {
   free: "무료",
@@ -109,6 +110,30 @@ export default function SubscriptionManagementScreen() {
                   <Text className="text-sm text-text-sub">구독 해지</Text>
                 </Pressable>
               )}
+            </View>
+          </>
+        ) : FREE_MODE ? (
+          <>
+            {/* Free Mode Status */}
+            <View className="items-center rounded-2xl bg-white p-6 shadow-sm mb-5">
+              <Gift size={48} color="#FF9500" />
+              <Text className="mt-4 text-2xl font-bold text-primary">
+                무료 이용 중
+              </Text>
+              <Text className="mt-2 text-center text-sm text-text-sub">
+                현재 모든 동화를 무료로 이용하고 계십니다
+              </Text>
+            </View>
+
+            {/* Benefits */}
+            <View className="rounded-2xl bg-[#FFF2D9] p-5">
+              <Text className="mb-3 font-bold text-primary">이용 가능한 혜택</Text>
+              {benefits.map((benefit, i) => (
+                <View key={i} className="flex-row items-center gap-2 py-1.5">
+                  <Check size={16} color="#34C759" />
+                  <Text className="text-sm text-text-main">{benefit}</Text>
+                </View>
+              ))}
             </View>
           </>
         ) : (

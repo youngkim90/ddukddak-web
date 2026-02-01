@@ -24,6 +24,7 @@ import {
   Volume2,
   Music,
 } from "lucide-react-native";
+import LottieView from "lottie-react-native";
 import { useStoryPages } from "@/hooks/useStories";
 import { useProgress, useSaveProgress } from "@/hooks/useProgress";
 import { getOptimizedImageUrl } from "@/lib/utils";
@@ -214,6 +215,21 @@ export default function ViewerScreen() {
                 style={{ width: "100%", height: "100%" }}
                 contentFit="cover"
               />
+              {page.lottieUrl && (
+                <LottieView
+                  source={{ uri: page.lottieUrl }}
+                  autoPlay
+                  loop
+                  speed={1.0}
+                  style={{
+                    position: "absolute",
+                    top: 0,
+                    left: 0,
+                    width: "100%",
+                    height: "100%",
+                  }}
+                />
+              )}
             </View>
           ) : (
             <View className="w-full max-w-lg aspect-[4/3] rounded-2xl bg-gradient-to-br from-[#FAD9E5] to-[#D9E5FA]" />

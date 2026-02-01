@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { View, Text, ScrollView, Pressable, Modal, Alert } from "react-native";
+import { View, Text, ScrollView, Pressable, Modal, Alert, Linking } from "react-native";
 import { useRouter } from "expo-router";
 import { Image } from "expo-image";
 import {
@@ -9,6 +9,7 @@ import {
   Megaphone,
   Headphones,
   FileText,
+  Shield,
   ChevronRight,
 } from "lucide-react-native";
 import { Button } from "@/components/ui";
@@ -16,19 +17,24 @@ import { useAuth } from "@/hooks/useAuth";
 import { useDeleteAccount } from "@/hooks/useUser";
 import { useAuthStore } from "@/stores/authStore";
 
+// TODO: 잡스님이 URL 전달하면 실제 URL로 교체
+const TERMS_URL = "https://ddukddak.expo.app/terms";
+const PRIVACY_URL = "https://ddukddak.expo.app/privacy";
+
 const menuSections = [
   {
     items: [
-      { id: "profile", label: "👤 프로필 관리", icon: User, route: "/(tabs)/settings/profile" },
-      { id: "subscription", label: "💳 구독 관리", icon: CreditCard, route: "/(tabs)/settings/subscription" },
-      { id: "notifications", label: "🔔 알림 설정", icon: Bell, route: null },
+      { id: "profile", label: "👤 프로필 관리", icon: User, route: "/(tabs)/settings/profile", url: null },
+      { id: "subscription", label: "💳 구독 관리", icon: CreditCard, route: "/(tabs)/settings/subscription", url: null },
+      { id: "notifications", label: "🔔 알림 설정", icon: Bell, route: null, url: null },
     ],
   },
   {
     items: [
-      { id: "notice", label: "📢 공지사항", icon: Megaphone, route: null },
-      { id: "support", label: "💬 고객센터", icon: Headphones, route: null },
-      { id: "terms", label: "📄 이용약관", icon: FileText, route: null },
+      { id: "notice", label: "📢 공지사항", icon: Megaphone, route: null, url: null },
+      { id: "support", label: "💬 고객센터", icon: Headphones, route: null, url: null },
+      { id: "terms", label: "📄 이용약관", icon: FileText, route: null, url: TERMS_URL },
+      { id: "privacy", label: "🔒 개인정보처리방침", icon: Shield, route: null, url: PRIVACY_URL },
     ],
   },
 ];
@@ -88,7 +94,13 @@ export default function SettingsScreen() {
             {section.items.map((item) => (
               <Pressable
                 key={item.id}
-                onPress={() => item.route && router.push(item.route as never)}
+                onPress={() => {
+                  if (item.url) {
+                    Linking.openURL(item.url);
+                  } else if (item.route) {
+                    router.push(item.route as never);
+                  }
+                }}
                 className="flex-row items-center justify-between bg-white px-5 py-4"
               >
                 <Text className="text-base text-text-main">{item.label}</Text>

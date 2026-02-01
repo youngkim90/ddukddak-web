@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { View, Text, ScrollView, Pressable, Alert } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { CreditCard, Check } from "lucide-react-native";
+import { CreditCard, Check, Info } from "lucide-react-native";
 import { Header } from "@/components/layout";
 import { Button, Checkbox } from "@/components/ui";
+import { FREE_MODE } from "@/lib/constants";
 
 const paymentMethods = [
   { id: "card", name: "신용/체크카드", icon: "💳" },
@@ -129,17 +130,25 @@ export default function PaymentScreen() {
       </ScrollView>
 
       <View className="px-5 pb-8 pt-3 bg-background">
+        {FREE_MODE && (
+          <View className="flex-row items-center gap-2 mb-3 rounded-lg bg-[#FFF2D9] px-4 py-3">
+            <Info size={16} color="#FF9500" />
+            <Text className="flex-1 text-sm text-text-sub">
+              현재 모든 동화를 무료로 이용하실 수 있습니다. 결제 기능은 준비 중입니다.
+            </Text>
+          </View>
+        )}
         <Button
           onPress={handlePayment}
           fullWidth
           size="lg"
           loading={isProcessing}
-          disabled={!agreeTerms}
+          disabled={FREE_MODE || !agreeTerms}
         >
           {isProcessing ? "결제 처리 중..." : `₩${plan.price.toLocaleString()} 결제하기`}
         </Button>
         <Text className="mt-3 text-center text-xs text-[#999999]">
-          토스페이먼츠로 안전하게 결제됩니다
+          {FREE_MODE ? "결제 기능은 추후 제공될 예정입니다" : "토스페이먼츠로 안전하게 결제됩니다"}
         </Text>
       </View>
     </View>

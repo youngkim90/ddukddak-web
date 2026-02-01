@@ -16,12 +16,17 @@
 
 ```
 ../fairytale-planning/docs/
-├── 2_FEATURES.md     # 기능 요구사항 (User Story)
-├── 3_SCREENS.md      # 화면 설계, 와이어프레임
-├── 4_TECH_STACK.md   # 기술 스택, 프로젝트 구조
-├── 5_API_SPEC.md     # API 명세서
-├── 6_DEV_PLAN.md     # 개발 계획서
-└── 7_TASK_TRACKER.md # 작업 현황 관리
+├── planning/
+│   ├── 2_FEATURES.md     # 기능 요구사항 (User Story)
+│   └── 3_SCREENS.md      # 화면 설계, 와이어프레임
+├── specs/
+│   ├── 4_TECH_STACK.md   # 기술 스택, 프로젝트 구조
+│   └── 5_API_SPEC.md     # API 명세서
+├── management/
+│   ├── 6_DEV_PLAN.md     # 개발 계획서
+│   └── 7_TASK_TRACKER.md # 작업 현황 관리
+└── work-orders/
+    └── WORK_ORDER_PRONG.md # 프론트엔드 작업 지시서
 ```
 
 - **Figma 와이어프레임**: https://www.figma.com/design/xgSTViIo7HytQATKKWSu7q/Tuktak
