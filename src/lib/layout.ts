@@ -10,13 +10,13 @@
 export const MOBILE_ASPECT_RATIO = 9 / 19.5;
 
 // 컨테이너 최대 크기 (더 큰 화면에서도 편안한 크기)
-export const MAX_CONTAINER_WIDTH = 520;
-export const MAX_CONTAINER_HEIGHT = 1040; // 비율 유지 (520 / MOBILE_ASPECT_RATIO)
+export const MAX_CONTAINER_WIDTH = 600;
+export const MAX_CONTAINER_HEIGHT = 1300; // 비율 유지 (600 / MOBILE_ASPECT_RATIO)
 
 // 뷰포트 대비 컨테이너 비율 (더 크게 표시)
 export const VIEWPORT_RATIOS = {
-  desktop: 0.92,  // 데스크톱: 뷰포트 높이의 92%
-  tablet: 0.96,   // 태블릿: 뷰포트 높이의 96%
+  desktop: 0.96,  // 데스크톱: 뷰포트 높이의 96%
+  tablet: 0.98,   // 태블릿: 뷰포트 높이의 98%
   mobile: 1.0,    // 모바일: 전체 화면
 } as const;
 
