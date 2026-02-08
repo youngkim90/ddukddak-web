@@ -1,4 +1,5 @@
-import { View, Pressable } from "react-native";
+import { useRef } from "react";
+import { View, PanResponder } from "react-native";
 
 interface VolumeSliderProps {
   value: number;
@@ -14,33 +15,33 @@ export function VolumeSlider({
   maximumValue = 1,
 }: VolumeSliderProps) {
   const percentage = ((value - minimumValue) / (maximumValue - minimumValue)) * 100;
+  const trackWidth = useRef(0);
 
-  function handlePress(event: { nativeEvent: { locationX: number } }, width: number) {
-    if (width > 0) {
-      const newValue = (event.nativeEvent.locationX / width) * (maximumValue - minimumValue) + minimumValue;
-      const clampedValue = Math.max(minimumValue, Math.min(maximumValue, newValue));
-      onValueChange(clampedValue);
-    }
-  }
+  const calcValue = (locationX: number) => {
+    if (trackWidth.current <= 0) return;
+    const ratio = Math.max(0, Math.min(1, locationX / trackWidth.current));
+    const newValue = ratio * (maximumValue - minimumValue) + minimumValue;
+    onValueChange(Math.round(newValue));
+  };
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderGrant: (e) => calcValue(e.nativeEvent.locationX),
+      onPanResponderMove: (e) => calcValue(e.nativeEvent.locationX),
+    })
+  ).current;
 
   return (
     <View
       className="h-10 justify-center"
       onLayout={(e) => {
-        const width = e.nativeEvent.layout.width;
-        // Store width for press handling
-        (e.target as any)._width = width;
+        trackWidth.current = e.nativeEvent.layout.width;
       }}
+      {...panResponder.panHandlers}
     >
-      <Pressable
-        className="h-2 rounded-full bg-gray-200"
-        onPress={(event) => {
-          const target = event.currentTarget as any;
-          target.measure((_x: number, _y: number, width: number) => {
-            handlePress(event, width);
-          });
-        }}
-      >
+      <View className="h-2 rounded-full bg-gray-200">
         <View
           className="h-2 rounded-full bg-primary"
           style={{ width: `${percentage}%` }}
@@ -49,7 +50,7 @@ export function VolumeSlider({
           className="absolute top-1/2 h-5 w-5 -translate-y-1/2 rounded-full bg-primary shadow"
           style={{ left: `${percentage}%`, marginLeft: -10 }}
         />
-      </Pressable>
+      </View>
     </View>
   );
 }

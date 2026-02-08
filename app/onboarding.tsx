@@ -74,7 +74,7 @@ export default function OnboardingScreen() {
           renderItem={({ item }) => (
             <View
               style={{ width }}
-              className="flex-1 items-center justify-center px-8"
+              className="flex-1 items-center justify-center px-8 pb-24"
             >
               <View className="h-48 w-48 items-center justify-center rounded-full bg-[#FFE5CC]">
                 <Text className="text-7xl" accessibilityElementsHidden>{item.emoji}</Text>

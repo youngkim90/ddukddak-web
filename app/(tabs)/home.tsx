@@ -18,9 +18,11 @@ import { getOptimizedImageUrl } from "@/lib/utils";
 import type { StoryCategory } from "@/types/story";
 
 const CATEGORY_EMOJIS: Record<string, string> = {
+  folktale: "🏮",
   lesson: "📚",
   adventure: "🚀",
   family: "🏠",
+  creativity: "🎨",
 };
 
 const BANNER_TEMPLATES = [
@@ -195,9 +197,11 @@ export default function HomeScreen() {
         </View>
 
         {/* Category Sections */}
+        <StoryCategorySection category="folktale" />
         <StoryCategorySection category="lesson" />
         <StoryCategorySection category="adventure" />
         <StoryCategorySection category="family" />
+        <StoryCategorySection category="creativity" />
 
         <View className="h-6" />
       </ScrollView>
