@@ -27,16 +27,22 @@ fairytale/
 ```
 ../fairytale-planning/docs/
 ├── planning/
-│   ├── 2_FEATURES.md     # 기능 요구사항 (User Story)
-│   └── 3_SCREENS.md      # 화면 설계, 와이어프레임
+│   ├── 0_RESEARCH.md       # 시장 조사
+│   ├── 1_OVERVIEW.md       # 프로젝트 개요
+│   ├── 2_FEATURES.md       # 기능 요구사항 (User Story)
+│   └── 3_SCREENS.md        # 화면 설계, 와이어프레임
 ├── specs/
-│   ├── 4_TECH_STACK.md   # 기술 스택, 프로젝트 구조
-│   └── 5_API_SPEC.md     # API 명세서
+│   ├── 4_TECH_STACK.md     # 기술 스택, 프로젝트 구조
+│   └── 5_API_SPEC.md       # API 명세서
 ├── management/
-│   ├── 6_DEV_PLAN.md     # 개발 계획서
-│   └── 7_TASK_TRACKER.md # 작업 현황 관리
+│   ├── 6_DEV_PLAN.md       # 개발 계획서
+│   ├── 7_TASK_TRACKER.md   # 작업 현황 관리
+│   └── 8_PAYMENT_POLICY.md # 결제 정책
 └── work-orders/
-    └── WORK_ORDER_PRONG.md # 프론트엔드 작업 지시서
+    ├── WORK_ORDER_PRONG.md # 프론트엔드 작업 지시서 (프롱)
+    ├── WORK_ORDER_CONAN.md # 백엔드 작업 지시서 (코난)
+    ├── WORK_ORDER_KANTE.md # 콘텐츠 작업 지시서 (캉테)
+    └── WORK_ORDER_JOBS.md  # 기획 작업 지시서 (잡스)
 ```
 
 - **Figma 와이어프레임**: https://www.figma.com/design/xgSTViIo7HytQATKKWSu7q/Tuktak
@@ -106,12 +112,20 @@ Google OAuth 웹 리다이렉트 방식 전환       [##########] 100%
 └── 프로덕션 테스트 완료
 ```
 
-**다음 단계: 결제 연동 + 앱 출시 (Google Play 우선)**
+**Phase 3: 콘텐츠 연동 + 출시 준비**
 
 ```
-3-1. 토스페이먼츠 SDK 연동                  [          ] 0%
-3-2. 결제 플로우 구현 (POST /subscriptions) [          ] 0%
-3-3. Google Play 출시                       [          ] 0%
+3-1. Free Mode UI 전환                     [##########] 100%
+├── S-07 동화 상세 FREE_MODE 버그 수정       ✅
+├── S-09, S-10, S-13 무료 모드 UI            ✅ (이전에 구현 완료)
+└── 스토리 카드 잠금 해제                    ✅ (이전에 구현 완료)
+3-2. AI 비디오 뷰어                         [##########] 100%
+├── expo-video 설치                         ✅
+├── lottie-react-native 제거                ✅
+├── StoryPage 타입 (mediaType/videoUrl)     ✅
+└── 뷰어 비디오/이미지 하이브리드 렌더링     ✅
+3-3. 법적 링크 (개인정보/이용약관)           [##########] 100%  ← 이전에 구현 완료
+3-4. Google Play 출시                       [          ] 0%    ← 수동 작업 대기
 ```
 
 ### 완료된 화면 (13/13)
@@ -145,6 +159,7 @@ Google OAuth 웹 리다이렉트 방식 전환       [##########] 100%
 | Server State | TanStack Query | 5.x |
 | Auth | Supabase Auth (OAuth: Google, Kakao) | 2.x |
 | Image | expo-image | 2.x |
+| Video | expo-video | 1.x |
 | Animation | React Native Reanimated | 3.x |
 | Icons | Lucide React Native | 0.475.x |
 
@@ -351,6 +366,9 @@ https://ddukddak-api-2lb4yqjazq-du.a.run.app/api
 | `/dd-security-check [type]` | 보안 검토 |
 | `/dd-expo-screen [name] [type]` | 새 화면 생성 (tab/modal/stack) |
 | `/dd-expo-check [type]` | 프로젝트 상태 체크 (deps/config/ts) |
+| `/dd-pr [branch]` | PR 생성 (커밋 + 푸시 + PR) |
+| `/dd-work [all]` | 논의된 작업 실행 (all: 커밋+PR 포함) |
+| `/dd-brainstorm` | 브레인스토밍 |
 
 ---
 
@@ -470,4 +488,46 @@ eas deploy --prod
 
 ---
 
-*마지막 업데이트: 2026-01-30 (OAuth 웹 리다이렉트 전환, EAS 배포 완료)*
+## 동화 뷰어 미디어 가이드
+
+### 미디어 타입
+
+| 타입 | 설명 | 구현 |
+|------|------|------|
+| `image` (기본) | 정적 이미지 | `expo-image` + `contentFit="cover"` |
+| `video` | AI 생성 영상 (2-3초, 무음) | `expo-video` VideoView (오버레이) |
+
+### StoryPage 미디어 필드
+
+```typescript
+interface StoryPage {
+  imageUrl: string;              // 항상 존재 (이미지 or 비디오 포스터)
+  mediaType?: "image" | "video"; // 없으면 "image" 기본
+  videoUrl?: string;             // mediaType === "video"일 때만
+  lottieUrl?: string;            // 하위 호환용 (사용하지 않음)
+}
+```
+
+### 비디오 재생 사양
+
+| 항목 | 값 |
+|------|-----|
+| 포맷 | MP4 (Cloudflare R2 스트리밍) |
+| 길이 | 2-3초 |
+| 음성 | 음소거 (`player.muted = true`) |
+| 반복 | 무한 루프 (`player.loop = true`) |
+| 이미지 비율 | 3:2 (1536×1024 가로) |
+| 에러 처리 | 비디오 실패 시 이미지 폴백 (오버레이 패턴) |
+
+### FREE_MODE (무료 모드)
+
+| 설정 | 값 |
+|------|-----|
+| 상수 | `src/lib/constants.ts` → `FREE_MODE` |
+| 기본값 | `true` (환경 변수 `EXPO_PUBLIC_FREE_MODE`로 제어) |
+| 동작 | 모든 동화 잠금 해제, 구독/결제 UI 비활성화 |
+| 적용 화면 | S-05, S-06, S-07, S-09, S-10, S-13 |
+
+---
+
+*마지막 업데이트: 2026-02-08 (Phase 3: Free Mode 버그 수정, Lottie→expo-video 전환)*

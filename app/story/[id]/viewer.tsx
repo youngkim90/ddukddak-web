@@ -24,7 +24,7 @@ import {
   Volume2,
   Music,
 } from "lucide-react-native";
-import LottieView from "lottie-react-native";
+import { useVideoPlayer, VideoView } from "expo-video";
 import { useStoryPages } from "@/hooks/useStories";
 import { useProgress, useSaveProgress } from "@/hooks/useProgress";
 import { getOptimizedImageUrl } from "@/lib/utils";
@@ -64,6 +64,25 @@ export default function ViewerScreen() {
   const pages = pagesData?.pages || [];
   const totalPages = pages.length;
   const page = pages[currentPage];
+
+  // Video player (호출 순서 보장 - early return 전에 선언)
+  const player = useVideoPlayer(null, (p) => {
+    p.loop = true;
+    p.muted = true;
+  });
+
+  // 페이지 변경 시 비디오 소스 교체
+  useEffect(() => {
+    const currentPageData = pages[currentPage];
+    if (!currentPageData || !player) return;
+
+    if (currentPageData.mediaType === "video" && currentPageData.videoUrl) {
+      player.replace(currentPageData.videoUrl);
+      player.play();
+    } else {
+      player.pause();
+    }
+  }, [currentPage, pages, player]);
 
   // Restore progress
   useEffect(() => {
@@ -206,21 +225,18 @@ export default function ViewerScreen() {
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
       >
-        {/* Image Area */}
+        {/* Media Area (이미지 + 비디오 오버레이) */}
         <View className="items-center px-4">
           {page.imageUrl ? (
-            <View className="w-full max-w-lg aspect-[4/3] rounded-2xl overflow-hidden">
+            <View className="w-full max-w-lg aspect-[3/2] rounded-2xl overflow-hidden">
               <Image
                 source={{ uri: getOptimizedImageUrl(page.imageUrl, 800) }}
                 style={{ width: "100%", height: "100%" }}
                 contentFit="cover"
               />
-              {page.lottieUrl && (
-                <LottieView
-                  source={{ uri: page.lottieUrl }}
-                  autoPlay
-                  loop
-                  speed={1.0}
+              {page.mediaType === "video" && page.videoUrl && (
+                <VideoView
+                  player={player}
                   style={{
                     position: "absolute",
                     top: 0,
@@ -228,11 +244,13 @@ export default function ViewerScreen() {
                     width: "100%",
                     height: "100%",
                   }}
+                  contentFit="cover"
+                  nativeControls={false}
                 />
               )}
             </View>
           ) : (
-            <View className="w-full max-w-lg aspect-[4/3] rounded-2xl bg-gradient-to-br from-[#FAD9E5] to-[#D9E5FA]" />
+            <View className="w-full max-w-lg aspect-[3/2] rounded-2xl bg-[#2A2A3E]" />
           )}
         </View>
 
