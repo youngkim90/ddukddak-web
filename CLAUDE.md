@@ -369,6 +369,7 @@ https://ddukddak-api-2lb4yqjazq-du.a.run.app/api
 | `/dd-pr [branch]` | PR 생성 (커밋 + 푸시 + PR) |
 | `/dd-work [all]` | 논의된 작업 실행 (all: 커밋+PR 포함) |
 | `/dd-brainstorm` | 브레인스토밍 |
+| `/dd-work-order [all]` | 작업지시서 읽기 + 구현 + 보고서 작성 |
 
 ---
 

@@ -15,6 +15,7 @@ export interface Story {
   durationMinutes: number;
   pageCount: number;
   isFree: boolean;
+  bgmUrl?: string;
   createdAt: string;
 }
 
@@ -26,7 +27,6 @@ export interface StoryPage {
   textEn: string;
   audioUrlKo?: string;
   audioUrlEn?: string;
-  lottieUrl?: string;
   mediaType?: "image" | "video";
   videoUrl?: string;
 }

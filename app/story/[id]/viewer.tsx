@@ -25,7 +25,8 @@ import {
   Music,
 } from "lucide-react-native";
 import { useVideoPlayer, VideoView } from "expo-video";
-import { useStoryPages } from "@/hooks/useStories";
+import { Audio } from "expo-av";
+import { useStory, useStoryPages } from "@/hooks/useStories";
 import { useProgress, useSaveProgress } from "@/hooks/useProgress";
 import { getOptimizedImageUrl } from "@/lib/utils";
 import { calculateContainerSize } from "@/lib/layout";
@@ -57,9 +58,13 @@ export default function ViewerScreen() {
   const touchStartX = useRef(0);
   const touchEndX = useRef(0);
 
+  const { data: storyData } = useStory(id);
   const { data: pagesData, isLoading, error } = useStoryPages(id);
   const { data: progressData } = useProgress(id);
   const saveProgress = useSaveProgress(id);
+
+  // BGM
+  const bgmRef = useRef<Audio.Sound | null>(null);
 
   const pages = pagesData?.pages || [];
   const totalPages = pages.length;
@@ -83,6 +88,57 @@ export default function ViewerScreen() {
       player.pause();
     }
   }, [currentPage, pages, player]);
+
+  // BGM: 오디오 모드 설정 (iOS 무음모드에서도 재생)
+  useEffect(() => {
+    Audio.setAudioModeAsync({
+      playsInSilentModeIOS: true,
+      staysActiveInBackground: false,
+      shouldDuckAndroid: true,
+    });
+  }, []);
+
+  // BGM: 로드 및 재생 (동화별 1곡, 무한 루프)
+  // 볼륨: 슬라이더 0~100 → 실제 출력 0~20% (TTS 대비 10~20%)
+  const MAX_BGM_VOLUME = 0.2;
+
+  useEffect(() => {
+    const bgmUrl = storyData?.bgmUrl;
+    if (!bgmUrl) return;
+
+    let sound: Audio.Sound | null = null;
+
+    const loadBgm = async () => {
+      const { sound: newSound } = await Audio.Sound.createAsync(
+        { uri: bgmUrl },
+        { isLooping: true, volume: (bgmVolume / 100) * MAX_BGM_VOLUME, shouldPlay: bgmEnabled }
+      );
+      sound = newSound;
+      bgmRef.current = newSound;
+    };
+
+    loadBgm();
+
+    return () => {
+      sound?.unloadAsync();
+      bgmRef.current = null;
+    };
+  }, [storyData?.bgmUrl]);
+
+  // BGM: 볼륨 변경
+  useEffect(() => {
+    bgmRef.current?.setVolumeAsync((bgmVolume / 100) * MAX_BGM_VOLUME);
+  }, [bgmVolume]);
+
+  // BGM: 토글 on/off
+  useEffect(() => {
+    if (!bgmRef.current) return;
+    if (bgmEnabled) {
+      bgmRef.current.playAsync();
+    } else {
+      bgmRef.current.pauseAsync();
+    }
+  }, [bgmEnabled]);
 
   // Restore progress
   useEffect(() => {
