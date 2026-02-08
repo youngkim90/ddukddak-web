@@ -2,17 +2,19 @@
 
 > AI 기반 맞춤형 동화 서비스 - iOS / Android / Web
 
-아이들을 위한 맞춤형 AI 동화 서비스입니다. 연령별 맞춤 동화를 이미지와 텍스트로 구성된 뷰어를 통해 몰입감 있는 독서 경험을 제공합니다.
+아이들을 위한 맞춤형 AI 동화 서비스입니다. 연령별 맞춤 동화를 AI 생성 이미지/영상과 텍스트로 구성된 뷰어를 통해 몰입감 있는 독서 경험을 제공합니다.
 
 **Web**: https://ddukddak.expo.app
 
 ## 주요 기능
 
-- 연령별 맞춤 동화 추천 (카테고리: 전래, 교훈, 모험, 가정)
-- 동화 뷰어 (이미지 + 자막, 스와이프, 자동 넘기기, 진행률 저장)
+- 연령별 맞춤 동화 추천 (카테고리: 전래, 교훈, 모험, 가정, 창의)
+- 동화 뷰어 (AI 이미지/영상 + 자막, 스와이프, 자동 넘기기, 진행률 저장)
+- AI 영상 재생 (핵심 장면 2~3초 무음 MP4 루프, 이미지 폴백)
+- BGM 재생 (동화별 30초 루프 MP3, 볼륨 조절)
 - 다국어 지원 (한국어 / 영어 전환)
 - 소셜 로그인 (Google, Kakao OAuth)
-- 구독 시스템 (무료 / 월간 / 연간)
+- 무료 모드 (MVP: 전체 동화 무료 제공)
 - 크로스플랫폼 (iOS, Android, Web)
 
 ## 기술 스택
@@ -26,6 +28,8 @@
 | Server State | TanStack Query 5 |
 | Auth | Supabase Auth (Google, Kakao OAuth) |
 | Image | expo-image |
+| Video | expo-video |
+| Audio | expo-av |
 | Animation | React Native Reanimated |
 | Icons | Lucide React Native |
 
@@ -100,9 +104,9 @@ src/
 | `/(tabs)/home` | 홈 (배너 + 카테고리별 동화) |
 | `/(tabs)/stories` | 동화 목록 (카테고리/연령 필터) |
 | `/story/[id]` | 동화 상세 (한/영 전환) |
-| `/story/[id]/viewer` | 동화 뷰어 (스와이프, 자동넘기기) |
-| `/subscription` | 구독 안내 (무료/월간/연간) |
-| `/payment` | 결제 |
+| `/story/[id]/viewer` | 동화 뷰어 (AI 영상/이미지, BGM, 스와이프) |
+| `/subscription` | 구독 안내 (현재 무료 모드) |
+| `/payment` | 결제 (현재 비활성화) |
 | `/(tabs)/settings` | 설정 |
 | `/(tabs)/settings/profile` | 프로필 관리 |
 | `/(tabs)/settings/subscription` | 구독 관리 |
@@ -142,7 +146,11 @@ eas build --platform android --profile production
 - [x] EAS 배포 (Web + Android)
 - [x] CI/CD (GitHub Actions)
 - [x] 접근성 지원
-- [ ] 토스페이먼츠 결제 연동
+- [x] 무료 모드 UI (FREE_MODE 플래그)
+- [x] AI 영상 뷰어 (expo-video 오버레이 패턴)
+- [x] BGM 오디오 재생 (expo-av, 볼륨 조절)
+- [ ] TTS 나레이션 재생
+- [ ] 결제 연동 (인앱결제 RevenueCat + 토스 웹)
 - [ ] Google Play 출시
 
 ## 관련 문서
