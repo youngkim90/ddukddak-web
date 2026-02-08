@@ -42,6 +42,9 @@ coverage/
 .idea/
 *.sublime-*
 
+# work reports (internal)
+docs/work-report/
+
 # claude code
 .claude/
 .mcp.json
