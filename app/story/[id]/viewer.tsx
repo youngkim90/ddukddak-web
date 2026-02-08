@@ -100,8 +100,9 @@ export default function ViewerScreen() {
   }, []);
 
   // Video player (호출 순서 보장 - early return 전에 선언)
+  // loop = false 시작 → 첫 재생 완료 감지 후 loop 활성화
   const player = useVideoPlayer(null, (p) => {
-    p.loop = true;
+    p.loop = false;
     p.muted = true;
   });
 
@@ -110,6 +111,9 @@ export default function ViewerScreen() {
     if (!player) return;
     const subscription = player.addListener("playToEnd", () => {
       videoFirstPlayDoneRef.current = true;
+      // 첫 재생 완료 후 루프 활성화 (비주얼 반복)
+      player.loop = true;
+      player.play();
       tryAutoAdvance();
     });
     return () => subscription.remove();
@@ -122,6 +126,7 @@ export default function ViewerScreen() {
 
     if (currentPageData.mediaType === "video" && currentPageData.videoUrl) {
       videoFirstPlayDoneRef.current = false;
+      player.loop = false;
       player.replace(currentPageData.videoUrl);
       player.play();
     } else {
