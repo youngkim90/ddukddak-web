@@ -27,6 +27,8 @@ export interface StoryPage {
   audioUrlKo?: string;
   audioUrlEn?: string;
   lottieUrl?: string;
+  mediaType?: "image" | "video";
+  videoUrl?: string;
 }
 
 export interface StoryPagesResponse {

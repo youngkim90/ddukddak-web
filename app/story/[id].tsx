@@ -11,6 +11,7 @@ import {
   CATEGORY_LABELS,
   CATEGORY_COLORS,
   AGE_GROUP_LABELS,
+  FREE_MODE,
 } from "@/lib/constants";
 import { getOptimizedImageUrl, formatDuration } from "@/lib/utils";
 import type { ApiError as ApiErrorType } from "@/types/story";
@@ -36,7 +37,7 @@ export default function StoryDetailScreen() {
 
   if (!story) return null;
 
-  const isLocked = !story.isFree && !isSubscribed;
+  const isLocked = !FREE_MODE && !story.isFree && !isSubscribed;
   const canRead = !isLocked;
   const categoryColor = CATEGORY_COLORS[story.category];
   const title = language === "ko" ? story.titleKo : story.titleEn;
