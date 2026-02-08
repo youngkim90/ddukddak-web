@@ -60,7 +60,7 @@ export default function ViewerScreen() {
 
   const { data: storyData } = useStory(id);
   const { data: pagesData, isLoading, error } = useStoryPages(id);
-  const { data: progressData } = useProgress(id);
+  const { data: progressData, isFetched: progressFetched } = useProgress(id);
   const saveProgress = useSaveProgress(id);
 
   // TTS
@@ -238,7 +238,9 @@ export default function ViewerScreen() {
     }
   }, [pages, currentPage, language, ttsEnabled, ttsVolume, tryAutoAdvance]);
 
+  // 진행률 복원 완료 후에만 TTS 시작 (첫 페이지 끊김 방지)
   useEffect(() => {
+    if (!progressFetched) return;
     playTts();
     return () => {
       if (autoAdvanceTimer.current) {
@@ -248,7 +250,7 @@ export default function ViewerScreen() {
       ttsRef.current?.unloadAsync();
       ttsRef.current = null;
     };
-  }, [currentPage, language]);
+  }, [currentPage, language, progressFetched]);
 
   // TTS: ttsEnabled 토글
   useEffect(() => {
