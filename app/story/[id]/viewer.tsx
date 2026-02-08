@@ -63,6 +63,15 @@ export default function ViewerScreen() {
   const { data: progressData } = useProgress(id);
   const saveProgress = useSaveProgress(id);
 
+  // TTS
+  const ttsRef = useRef<Audio.Sound | null>(null);
+  const ttsLoadingRef = useRef(false);
+
+  // Auto-advance: TTS와 비디오 중 긴 쪽 완료 후 1초 대기
+  const ttsFinishedRef = useRef(true);
+  const videoFirstPlayDoneRef = useRef(true);
+  const autoAdvanceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   // BGM
   const bgmRef = useRef<Audio.Sound | null>(null);
 
@@ -70,21 +79,53 @@ export default function ViewerScreen() {
   const totalPages = pages.length;
   const page = pages[currentPage];
 
+  // Refs for stale closure prevention (callbacks)
+  const autoPlayRef = useRef(autoPlayEnabled);
+  const totalPagesRef = useRef(totalPages);
+  autoPlayRef.current = autoPlayEnabled;
+  totalPagesRef.current = totalPages;
+
+  // 자동 넘김: TTS + 비디오 모두 완료 시 1초 뒤 다음 페이지
+  const tryAutoAdvance = useCallback(() => {
+    if (!ttsFinishedRef.current || !videoFirstPlayDoneRef.current) return;
+    if (!autoPlayRef.current) return;
+
+    if (autoAdvanceTimer.current) clearTimeout(autoAdvanceTimer.current);
+    autoAdvanceTimer.current = setTimeout(() => {
+      setCurrentPage((prev) => {
+        if (prev < totalPagesRef.current - 1) return prev + 1;
+        return prev;
+      });
+    }, 1000);
+  }, []);
+
   // Video player (호출 순서 보장 - early return 전에 선언)
   const player = useVideoPlayer(null, (p) => {
     p.loop = true;
     p.muted = true;
   });
 
-  // 페이지 변경 시 비디오 소스 교체
+  // 비디오 첫 재생 완료 감지
+  useEffect(() => {
+    if (!player) return;
+    const subscription = player.addListener("playToEnd", () => {
+      videoFirstPlayDoneRef.current = true;
+      tryAutoAdvance();
+    });
+    return () => subscription.remove();
+  }, [player, tryAutoAdvance]);
+
+  // 페이지 변경 시 비디오 소스 교체 + 완료 상태 초기화
   useEffect(() => {
     const currentPageData = pages[currentPage];
     if (!currentPageData || !player) return;
 
     if (currentPageData.mediaType === "video" && currentPageData.videoUrl) {
+      videoFirstPlayDoneRef.current = false;
       player.replace(currentPageData.videoUrl);
       player.play();
     } else {
+      videoFirstPlayDoneRef.current = true;
       player.pause();
     }
   }, [currentPage, pages, player]);
@@ -140,6 +181,90 @@ export default function ViewerScreen() {
     }
   }, [bgmEnabled]);
 
+  // TTS: 페이지/언어 변경 시 오디오 재생
+  const playTts = useCallback(async () => {
+    // 자동 넘김 타이머 정리
+    if (autoAdvanceTimer.current) {
+      clearTimeout(autoAdvanceTimer.current);
+      autoAdvanceTimer.current = null;
+    }
+
+    // 이전 TTS 정리
+    if (ttsRef.current) {
+      await ttsRef.current.unloadAsync();
+      ttsRef.current = null;
+    }
+
+    const currentPageData = pages[currentPage];
+    if (!currentPageData) return;
+
+    const audioUrl = language === "ko" ? currentPageData.audioUrlKo : currentPageData.audioUrlEn;
+
+    if (!ttsEnabled || ttsLoadingRef.current || !audioUrl) {
+      // TTS 재생 안 함 → 즉시 완료 처리
+      ttsFinishedRef.current = true;
+      tryAutoAdvance();
+      return;
+    }
+
+    ttsFinishedRef.current = false;
+    ttsLoadingRef.current = true;
+    try {
+      const { sound } = await Audio.Sound.createAsync(
+        { uri: audioUrl },
+        { volume: ttsVolume / 100, shouldPlay: true }
+      );
+      ttsRef.current = sound;
+      setIsPlaying(true);
+
+      sound.setOnPlaybackStatusUpdate((status) => {
+        if (!status.isLoaded) return;
+        if (status.didJustFinish) {
+          setIsPlaying(false);
+          ttsFinishedRef.current = true;
+          tryAutoAdvance();
+        }
+      });
+    } catch {
+      ttsFinishedRef.current = true;
+      tryAutoAdvance();
+    } finally {
+      ttsLoadingRef.current = false;
+    }
+  }, [pages, currentPage, language, ttsEnabled, ttsVolume, tryAutoAdvance]);
+
+  useEffect(() => {
+    playTts();
+    return () => {
+      if (autoAdvanceTimer.current) {
+        clearTimeout(autoAdvanceTimer.current);
+        autoAdvanceTimer.current = null;
+      }
+      ttsRef.current?.unloadAsync();
+      ttsRef.current = null;
+    };
+  }, [currentPage, language]);
+
+  // TTS: ttsEnabled 토글
+  useEffect(() => {
+    if (!ttsRef.current) {
+      if (ttsEnabled) playTts();
+      return;
+    }
+    if (ttsEnabled) {
+      ttsRef.current.playAsync();
+      setIsPlaying(true);
+    } else {
+      ttsRef.current.pauseAsync();
+      setIsPlaying(false);
+    }
+  }, [ttsEnabled]);
+
+  // TTS: 볼륨 변경
+  useEffect(() => {
+    ttsRef.current?.setVolumeAsync(ttsVolume / 100);
+  }, [ttsVolume]);
+
   // Restore progress
   useEffect(() => {
     if (progressData && progressData.currentPage > 0 && !progressData.isCompleted && pages.length > 0) {
@@ -171,16 +296,25 @@ export default function ViewerScreen() {
     return () => handler.remove();
   }, [router, id]);
 
-  // Auto-play timer
+  // Auto-play timer (TTS/비디오 모두 없을 때만 폴백으로 5초 타이머)
   useEffect(() => {
-    if (!autoPlayEnabled || !isPlaying || currentPage >= totalPages - 1) return;
+    if (!autoPlayEnabled || currentPage >= totalPages - 1) return;
+
+    const currentPageData = pages[currentPage];
+    if (!currentPageData) return;
+
+    const audioUrl = language === "ko" ? currentPageData.audioUrlKo : currentPageData.audioUrlEn;
+    const hasVideo = currentPageData.mediaType === "video" && currentPageData.videoUrl;
+
+    // TTS 오디오 또는 비디오가 있으면 완료 콜백에서 처리
+    if ((ttsEnabled && audioUrl) || hasVideo) return;
 
     const timer = setTimeout(() => {
-      handleNext();
+      setCurrentPage((prev) => (prev < totalPages - 1 ? prev + 1 : prev));
     }, 5000);
 
     return () => clearTimeout(timer);
-  }, [autoPlayEnabled, isPlaying, currentPage, totalPages]);
+  }, [autoPlayEnabled, currentPage, totalPages, pages, language, ttsEnabled]);
 
   const handlePrevious = useCallback(() => {
     if (currentPage > 0) {
@@ -197,9 +331,20 @@ export default function ViewerScreen() {
     }
   }, [currentPage, totalPages, router, id]);
 
-  const togglePlayPause = useCallback(() => {
-    setIsPlaying((prev) => !prev);
-    // TODO: Implement actual TTS playback
+  const togglePlayPause = useCallback(async () => {
+    if (ttsRef.current) {
+      const status = await ttsRef.current.getStatusAsync();
+      if (status.isLoaded && status.isPlaying) {
+        await ttsRef.current.pauseAsync();
+        setIsPlaying(false);
+      } else if (status.isLoaded) {
+        await ttsRef.current.playAsync();
+        setIsPlaying(true);
+      }
+    } else {
+      // TTS 오디오가 없으면 자동 넘김 타이머용 토글
+      setIsPlaying((prev) => !prev);
+    }
   }, []);
 
   const handleClose = useCallback(() => {
