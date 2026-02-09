@@ -11,9 +11,9 @@ export default function TabsLayout() {
         tabBarStyle: {
           backgroundColor: "#FFFFFF",
           borderTopColor: "#F0F0F0",
-          height: 80,
-          paddingBottom: 20,
-          paddingTop: 8,
+          height: 60,
+          paddingBottom: 8,
+          paddingTop: 6,
         },
         tabBarLabelStyle: {
           fontSize: 11,

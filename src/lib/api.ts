@@ -138,6 +138,12 @@ export const progressApi = {
       method: "PUT",
       body: JSON.stringify(data),
     }),
+
+  /** 전체 진행률 초기화 */
+  resetAll: () =>
+    fetchApi<{ message: string }>("/progress", {
+      method: "DELETE",
+    }),
 };
 
 // ==================== Subscriptions API ====================

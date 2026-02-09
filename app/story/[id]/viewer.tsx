@@ -5,7 +5,6 @@ import {
   Pressable,
   Modal,
   ScrollView,
-  useWindowDimensions,
   BackHandler,
   Platform,
   GestureResponderEvent,
@@ -29,18 +28,10 @@ import { Audio } from "expo-av";
 import { useStory, useStoryPages } from "@/hooks/useStories";
 import { useProgress, useSaveProgress } from "@/hooks/useProgress";
 import { getOptimizedImageUrl } from "@/lib/utils";
-import { calculateContainerSize } from "@/lib/layout";
 
 export default function ViewerScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
-
-  // Calculate actual container size for web
-  const containerSize = Platform.OS === "web"
-    ? calculateContainerSize(windowWidth, windowHeight)
-    : { width: windowWidth, height: windowHeight };
-
   const searchParams = useLocalSearchParams<{ id: string; lang?: string }>();
   const initialLang = (searchParams.lang as "ko" | "en") || "ko";
 
@@ -57,8 +48,8 @@ export default function ViewerScreen() {
   // TTS enabled 토글 마운트 추적 (초기 마운트 skip용)
   const ttsEnabledMounted = useRef(false);
 
-  // 진행률 초기 복원 완료 추적 (1회만 실행)
-  const progressRestoredRef = useRef(false);
+  // 진행률 초기 복원 완료 추적 (state로 관리 → TTS effect 트리거)
+  const [progressRestored, setProgressRestored] = useState(false);
 
   // Swipe refs
   const touchStartX = useRef(0);
@@ -88,10 +79,14 @@ export default function ViewerScreen() {
   // Refs for stale closure prevention (callbacks)
   const autoPlayRef = useRef(autoPlayEnabled);
   const totalPagesRef = useRef(totalPages);
+  const routerRef = useRef(router);
+  const idRef = useRef(id);
   autoPlayRef.current = autoPlayEnabled;
   totalPagesRef.current = totalPages;
+  routerRef.current = router;
+  idRef.current = id;
 
-  // 자동 넘김: TTS + 비디오 모두 완료 시 1초 뒤 다음 페이지
+  // 자동 넘김: TTS + 비디오 모두 완료 시 1초 뒤 다음 페이지 / 마지막 페이지면 3초 후 이전 화면
   const tryAutoAdvance = useCallback(() => {
     if (!ttsFinishedRef.current || !videoFirstPlayDoneRef.current) return;
     if (!autoPlayRef.current) return;
@@ -100,6 +95,10 @@ export default function ViewerScreen() {
     autoAdvanceTimer.current = setTimeout(() => {
       setCurrentPage((prev) => {
         if (prev < totalPagesRef.current - 1) return prev + 1;
+        // 마지막 페이지 → 3초 후 동화 상세로 이동
+        setTimeout(() => {
+          routerRef.current.replace(`/story/${idRef.current}`);
+        }, 2000); // 이미 1초 대기 후이므로 추가 2초 (총 3초)
         return prev;
       });
     }, 1000);
@@ -112,36 +111,33 @@ export default function ViewerScreen() {
     p.muted = true;
   });
 
-  // 비디오 폴백/재시도 타이머 refs
+  // 비디오 폴백 타이머 ref
   const videoFallbackTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const videoRetryTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // 비디오 타이머 전체 정리 헬퍼
+  // 비디오 타이머 정리 헬퍼
   const clearVideoTimers = useCallback(() => {
     if (videoFallbackTimer.current) {
       clearTimeout(videoFallbackTimer.current);
       videoFallbackTimer.current = null;
     }
-    if (videoRetryTimer.current) {
-      clearTimeout(videoRetryTimer.current);
-      videoRetryTimer.current = null;
-    }
   }, []);
 
-  // 비디오: statusChange로 readyToPlay 시 play() (백업 트리거)
+  // 비디오: statusChange로 readyToPlay 시 play()
   useEffect(() => {
     if (!player) return;
     const sub = player.addListener("statusChange", ({ status }) => {
       if (status === "readyToPlay") {
+        clearVideoTimers();
         player.play();
       }
-      if (status === "error") {
+      if (status === "error" && !videoFirstPlayDoneRef.current) {
+        // 비디오 로드 실패 시에만 auto-advance (이미 완료된 상태면 무시)
         videoFirstPlayDoneRef.current = true;
         tryAutoAdvance();
       }
     });
     return () => sub.remove();
-  }, [player, tryAutoAdvance]);
+  }, [player, tryAutoAdvance, clearVideoTimers]);
 
   // 비디오 첫 재생 완료 감지
   useEffect(() => {
@@ -168,13 +164,7 @@ export default function ViewerScreen() {
       videoFirstPlayDoneRef.current = false;
       player.loop = false;
       player.replace(currentPageData.videoUrl);
-      // replace 후 직접 play() 시도 (readyToPlay 이벤트 미발생 대비)
-      player.play();
-
-      // 1초 후 재생 안 되고 있으면 재시도
-      videoRetryTimer.current = setTimeout(() => {
-        try { player.play(); } catch {}
-      }, 1000);
+      // play()는 statusChange 리스너에서 readyToPlay 시 호출 (replace 직후 호출하면 충돌)
 
       // 10초 폴백: playToEnd 미발생 시 자동 진행
       videoFallbackTimer.current = setTimeout(() => {
@@ -243,6 +233,24 @@ export default function ViewerScreen() {
     }
   }, [bgmEnabled]);
 
+  // 웹: 브라우저 탭 비활성 시 BGM/TTS 일시정지, 복귀 시 재개
+  useEffect(() => {
+    if (Platform.OS !== "web") return;
+
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        bgmRef.current?.pauseAsync();
+        ttsRef.current?.pauseAsync();
+      } else {
+        if (bgmEnabled) bgmRef.current?.playAsync();
+        if (ttsEnabled) ttsRef.current?.playAsync();
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
+  }, [bgmEnabled, ttsEnabled]);
+
   // TTS: 페이지/언어 변경 시 오디오 재생
   const playTts = useCallback(async () => {
     // 자동 넘김 타이머 정리
@@ -295,9 +303,9 @@ export default function ViewerScreen() {
     }
   }, [pages, currentPage, language, ttsEnabled, ttsVolume, tryAutoAdvance]);
 
-  // 진행률 복원 완료 후에만 TTS 시작 (첫 페이지 끊김 방지)
+  // 진행률 복원 완료 후 TTS 시작 (progressRestored가 true가 된 후에만)
   useEffect(() => {
-    if (!progressFetched) return;
+    if (!progressRestored) return;
     playTts();
     return () => {
       if (autoAdvanceTimer.current) {
@@ -307,7 +315,7 @@ export default function ViewerScreen() {
       ttsRef.current?.unloadAsync();
       ttsRef.current = null;
     };
-  }, [currentPage, language, progressFetched]);
+  }, [currentPage, language, progressRestored]);
 
   // TTS: ttsEnabled 토글 (초기 마운트 skip — TTS는 [currentPage, language, progressFetched] effect에서 시작)
   useEffect(() => {
@@ -333,17 +341,18 @@ export default function ViewerScreen() {
     ttsRef.current?.setVolumeAsync(ttsVolume / 100);
   }, [ttsVolume]);
 
-  // Restore progress (초기 1회만 — 이후 saveProgress의 invalidateQueries로 인한 재실행 방지)
+  // Restore progress (초기 1회만 → 완료 후 progressRestored=true로 TTS 시작)
   useEffect(() => {
-    if (progressRestoredRef.current) return;
-    if (progressData && pages.length > 0) {
-      progressRestoredRef.current = true;
-      if (progressData.currentPage > 0 && !progressData.isCompleted) {
+    if (progressRestored) return;
+    if (progressFetched && pages.length > 0) {
+      if (progressData && progressData.currentPage > 0 && !progressData.isCompleted) {
         const savedPage = Math.min(progressData.currentPage - 1, pages.length - 1);
         setCurrentPage(savedPage);
       }
+      // 복원 여부와 관계없이 "확인 완료" 표시 → 다음 렌더에서 TTS 시작
+      setProgressRestored(true);
     }
-  }, [progressData, pages.length]);
+  }, [progressFetched, progressData, pages.length, progressRestored]);
 
   // Save progress on page change
   useEffect(() => {
@@ -475,7 +484,7 @@ export default function ViewerScreen() {
       <StatusBar hidden />
 
       {/* Top Bar */}
-      <View className="flex-row items-center justify-between px-4 py-3 pt-14">
+      <View className="flex-row items-center justify-between px-4 py-2 pt-4">
         <Pressable
           onPress={handleClose}
           className="h-10 w-10 items-center justify-center rounded-full bg-white/10"
@@ -494,14 +503,14 @@ export default function ViewerScreen() {
 
       {/* Main Content with Swipe */}
       <View
-        className="flex-1"
+        className="flex-1 justify-center"
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
       >
-        {/* Media Area — 상단 고정 */}
-        <View className="items-center px-4 pt-2">
+        {/* Media Area */}
+        <View className="items-center" style={{ paddingHorizontal: "2%" }}>
           {page.imageUrl ? (
-            <View className="w-full max-w-lg aspect-[3/2] rounded-2xl overflow-hidden">
+            <View className="w-full aspect-[3/2] rounded-xl overflow-hidden">
               <Image
                 source={{ uri: getOptimizedImageUrl(page.imageUrl, 800) }}
                 style={{ width: "100%", height: "100%" }}
@@ -523,15 +532,14 @@ export default function ViewerScreen() {
               )}
             </View>
           ) : (
-            <View className="w-full max-w-lg aspect-[3/2] rounded-2xl bg-[#2A2A3E]" />
+            <View className="w-full aspect-[3/2] rounded-xl bg-[#2A2A3E]" />
           )}
         </View>
 
-        {/* Text Area — 하단, 제한된 높이 + 스크롤 */}
-        <View className="flex-1 justify-end px-6 pt-4 pb-2">
+        {/* Text Area — 고정 높이, 미디어 위치 불변 */}
+        <View className="px-6 pt-3" style={{ height: 160 }}>
           <ScrollView
-            className="rounded-xl bg-white/10 px-5 py-4"
-            style={{ maxHeight: 160 }}
+            className="flex-1 rounded-xl bg-white/10 px-5 py-4"
             showsVerticalScrollIndicator={false}
           >
             <Text
@@ -590,7 +598,7 @@ export default function ViewerScreen() {
       </View>
 
       {/* Bottom Controls */}
-      <View className="flex-row items-center justify-center gap-3 px-6 pb-10 pt-2">
+      <View className="flex-row items-center justify-center gap-3 px-6 pb-6 pt-2">
         <Pressable
           onPress={() => setLanguage((prev) => (prev === "ko" ? "en" : "ko"))}
           className="rounded-full bg-white/10 px-4 py-2"
