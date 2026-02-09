@@ -19,7 +19,6 @@ import type { StoryCategory } from "@/types/story";
 
 const CATEGORY_EMOJIS: Record<string, string> = {
   folktale: "🏮",
-  lesson: "📚",
   adventure: "🚀",
   family: "🏠",
   creativity: "🎨",
@@ -43,7 +42,7 @@ function StoryCategorySection({ category }: { category: StoryCategory }) {
   return (
     <View className="mt-6">
       <View className="flex-row items-center justify-between px-5 mb-3">
-        <Text className="text-lg font-bold text-text-main">
+        <Text className="text-base md:text-lg font-bold text-text-main">
           {emoji} {label} 동화
         </Text>
         <Pressable onPress={() => router.push(`/(tabs)/stories?category=${category}`)}>
@@ -153,7 +152,7 @@ export default function HomeScreen() {
                   }}
                 >
                   <Text className="text-sm text-white/80">{item.title}</Text>
-                  <Text className="mt-1 text-xl font-bold text-white">{item.subtitle}</Text>
+                  <Text className="mt-1 text-lg md:text-xl font-bold text-white">{item.subtitle}</Text>
                 </Pressable>
               )}
             />
@@ -198,7 +197,6 @@ export default function HomeScreen() {
 
         {/* Category Sections */}
         <StoryCategorySection category="folktale" />
-        <StoryCategorySection category="lesson" />
         <StoryCategorySection category="adventure" />
         <StoryCategorySection category="family" />
         <StoryCategorySection category="creativity" />

@@ -11,13 +11,14 @@ export default function TabsLayout() {
         tabBarStyle: {
           backgroundColor: "#FFFFFF",
           borderTopColor: "#F0F0F0",
-          height: 60,
-          paddingBottom: 8,
+          height: 64,
+          paddingBottom: 10,
           paddingTop: 6,
         },
         tabBarLabelStyle: {
           fontSize: 11,
-          fontFamily: "Pretendard",
+          fontFamily: "GowunDodum",
+          overflow: "visible" as const,
         },
       }}
     >

@@ -38,7 +38,6 @@ export const AGE_GROUP_LABELS: Record<AgeGroup, string> = {
 export const CATEGORY_OPTIONS = [
   { value: "all", label: "전체" },
   { value: "folktale", label: "전래" },
-  { value: "lesson", label: "교훈" },
   { value: "family", label: "가정" },
   { value: "adventure", label: "모험" },
   { value: "creativity", label: "창의" },

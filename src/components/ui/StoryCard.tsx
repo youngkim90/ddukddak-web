@@ -23,7 +23,7 @@ export function StoryCard({
   return (
     <Pressable onPress={onPress} className={cn("w-36", className)} accessibilityLabel={title}>
       <View
-        className="aspect-[4/5] w-full overflow-hidden rounded-xl"
+        className="aspect-[3/2] w-full overflow-hidden rounded-xl"
         style={{ backgroundColor: thumbnailColor }}
       >
         {thumbnailUrl ? (
