@@ -21,6 +21,7 @@ export default {
         success: "#34C759",
       },
       fontFamily: {
+        sans: ["GowunDodum"],
         pretendard: ["Pretendard"],
         "pretendard-bold": ["Pretendard-Bold"],
       },

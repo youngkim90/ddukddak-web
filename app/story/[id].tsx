@@ -88,7 +88,7 @@ export default function StoryDetailScreen() {
           </View>
 
           {/* Title */}
-          <Text className="text-2xl font-bold text-text-main">{title}</Text>
+          <Text className="text-xl md:text-2xl font-bold text-text-main">{title}</Text>
 
           {/* Meta */}
           <View className="flex-row items-center gap-4">
@@ -142,7 +142,7 @@ export default function StoryDetailScreen() {
           </View>
 
           {/* Description */}
-          <Text className="text-base leading-6 text-text-main">
+          <Text className="text-sm md:text-base leading-6 text-text-main">
             {description}
           </Text>
 

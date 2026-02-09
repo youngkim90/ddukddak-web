@@ -19,7 +19,7 @@ export function HomeHeader() {
         <View className="h-8 w-8 items-center justify-center rounded-full bg-primary">
           <Text className="text-sm font-bold text-white">뚝</Text>
         </View>
-        <Text className="text-lg font-bold text-text-main">뚝딱동화</Text>
+        <Text className="text-base md:text-lg font-bold text-text-main">뚝딱동화</Text>
       </Pressable>
 
       <Pressable
