@@ -57,6 +57,9 @@ export default function ViewerScreen() {
   // TTS enabled 토글 마운트 추적 (초기 마운트 skip용)
   const ttsEnabledMounted = useRef(false);
 
+  // 진행률 초기 복원 완료 추적 (1회만 실행)
+  const progressRestoredRef = useRef(false);
+
   // Swipe refs
   const touchStartX = useRef(0);
   const touchEndX = useRef(0);
@@ -109,14 +112,29 @@ export default function ViewerScreen() {
     p.muted = true;
   });
 
-  // 비디오 폴백 타이머 ref
+  // 비디오 폴백/재시도 타이머 refs
   const videoFallbackTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const videoRetryTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // 비디오: statusChange로 readyToPlay 후 안전하게 play()
+  // 비디오 타이머 전체 정리 헬퍼
+  const clearVideoTimers = useCallback(() => {
+    if (videoFallbackTimer.current) {
+      clearTimeout(videoFallbackTimer.current);
+      videoFallbackTimer.current = null;
+    }
+    if (videoRetryTimer.current) {
+      clearTimeout(videoRetryTimer.current);
+      videoRetryTimer.current = null;
+    }
+  }, []);
+
+  // 비디오: statusChange로 readyToPlay 시 play() (백업 트리거)
   useEffect(() => {
     if (!player) return;
-    const sub = player.addListener("statusChange", ({ status, error }) => {
-      if (status === "readyToPlay") player.play();
+    const sub = player.addListener("statusChange", ({ status }) => {
+      if (status === "readyToPlay") {
+        player.play();
+      }
       if (status === "error") {
         videoFirstPlayDoneRef.current = true;
         tryAutoAdvance();
@@ -129,11 +147,7 @@ export default function ViewerScreen() {
   useEffect(() => {
     if (!player) return;
     const subscription = player.addListener("playToEnd", () => {
-      // 폴백 타이머 정리
-      if (videoFallbackTimer.current) {
-        clearTimeout(videoFallbackTimer.current);
-        videoFallbackTimer.current = null;
-      }
+      clearVideoTimers();
       videoFirstPlayDoneRef.current = true;
       // 첫 재생 완료 후 루프 활성화 (비주얼 반복)
       player.loop = true;
@@ -141,24 +155,26 @@ export default function ViewerScreen() {
       tryAutoAdvance();
     });
     return () => subscription.remove();
-  }, [player, tryAutoAdvance]);
+  }, [player, tryAutoAdvance, clearVideoTimers]);
 
   // 페이지 변경 시 비디오 소스 교체 + 완료 상태 초기화
   useEffect(() => {
     const currentPageData = pages[currentPage];
     if (!currentPageData || !player) return;
 
-    // 이전 폴백 타이머 정리
-    if (videoFallbackTimer.current) {
-      clearTimeout(videoFallbackTimer.current);
-      videoFallbackTimer.current = null;
-    }
+    clearVideoTimers();
 
     if (currentPageData.mediaType === "video" && currentPageData.videoUrl) {
       videoFirstPlayDoneRef.current = false;
       player.loop = false;
       player.replace(currentPageData.videoUrl);
-      // play()는 statusChange 리스너에서 readyToPlay 시 호출
+      // replace 후 직접 play() 시도 (readyToPlay 이벤트 미발생 대비)
+      player.play();
+
+      // 1초 후 재생 안 되고 있으면 재시도
+      videoRetryTimer.current = setTimeout(() => {
+        try { player.play(); } catch {}
+      }, 1000);
 
       // 10초 폴백: playToEnd 미발생 시 자동 진행
       videoFallbackTimer.current = setTimeout(() => {
@@ -173,13 +189,8 @@ export default function ViewerScreen() {
       player.pause();
     }
 
-    return () => {
-      if (videoFallbackTimer.current) {
-        clearTimeout(videoFallbackTimer.current);
-        videoFallbackTimer.current = null;
-      }
-    };
-  }, [currentPage, pages, player]);
+    return clearVideoTimers;
+  }, [currentPage, pages, player, clearVideoTimers]);
 
   // BGM: 오디오 모드 설정 (iOS 무음모드에서도 재생)
   useEffect(() => {
@@ -322,11 +333,15 @@ export default function ViewerScreen() {
     ttsRef.current?.setVolumeAsync(ttsVolume / 100);
   }, [ttsVolume]);
 
-  // Restore progress
+  // Restore progress (초기 1회만 — 이후 saveProgress의 invalidateQueries로 인한 재실행 방지)
   useEffect(() => {
-    if (progressData && progressData.currentPage > 0 && !progressData.isCompleted && pages.length > 0) {
-      const savedPage = Math.min(progressData.currentPage - 1, pages.length - 1);
-      setCurrentPage(savedPage);
+    if (progressRestoredRef.current) return;
+    if (progressData && pages.length > 0) {
+      progressRestoredRef.current = true;
+      if (progressData.currentPage > 0 && !progressData.isCompleted) {
+        const savedPage = Math.min(progressData.currentPage - 1, pages.length - 1);
+        setCurrentPage(savedPage);
+      }
     }
   }, [progressData, pages.length]);
 
