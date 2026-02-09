@@ -512,12 +512,12 @@ export default function ViewerScreen() {
 
       {/* Main Content with Swipe */}
       <View
-        className="flex-1 justify-center"
+        className="flex-1"
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
       >
-        {/* Media Area */}
-        <View className="items-center" style={{ paddingHorizontal: "2%" }}>
+        {/* Media Area — 상단 고정 */}
+        <View className="items-center pt-2" style={{ paddingHorizontal: "2%" }}>
           {page.imageUrl ? (
             <View className="w-full aspect-[3/2] rounded-xl overflow-hidden">
               <Image
@@ -545,8 +545,8 @@ export default function ViewerScreen() {
           )}
         </View>
 
-        {/* Text Area — 미디어 바로 아래, 긴 자막 스크롤 */}
-        <View className="px-6 pt-4">
+        {/* Text Area — 미디어 아래 고정 영역, 자막만 스크롤 */}
+        <View className="flex-1 justify-center px-6 pt-4 pb-2">
           <ScrollView
             className="rounded-xl bg-white/10 px-5 py-4"
             style={{ maxHeight: 160 }}
