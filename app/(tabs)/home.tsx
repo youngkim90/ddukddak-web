@@ -145,7 +145,7 @@ export default function HomeScreen() {
               renderItem={({ item }) => (
                 <Pressable
                   style={{ width: width - 40, backgroundColor: item.bgColor }}
-                  className="justify-center px-6 py-8"
+                  className="justify-center px-12 py-8"
                   onPress={() => {
                     if (item.storyId) {
                       router.push(`/story/${item.storyId}`);

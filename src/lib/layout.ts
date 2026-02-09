@@ -6,12 +6,15 @@
  * - 태블릿/데스크톱: 중앙 정렬된 모바일 뷰 + 디바이스 프레임 스타일
  */
 
-// 모바일 기기 비율 (iPhone 14 Pro: 393x852 ≈ 9:19.5)
-export const MOBILE_ASPECT_RATIO = 9 / 19.5;
+// 모바일/태블릿 비율 (글로벌 1위 360x800 = 9:20, 최신 안드로이드/아이폰 공통)
+export const MOBILE_ASPECT_RATIO = 9 / 20;
+
+// 데스크톱 웹 비율 (24인치+ 모니터에서 넓게 보기)
+export const DESKTOP_ASPECT_RATIO = 9 / 16;
 
 // 컨테이너 최대 크기 (더 큰 화면에서도 편안한 크기)
 export const MAX_CONTAINER_WIDTH = 600;
-export const MAX_CONTAINER_HEIGHT = 1300; // 비율 유지 (600 / MOBILE_ASPECT_RATIO)
+export const MAX_CONTAINER_HEIGHT = 1333; // 9:20 기준 (600 / (9/20) ≈ 1333)
 
 // 뷰포트 대비 컨테이너 비율 (더 크게 표시)
 export const VIEWPORT_RATIOS = {
@@ -50,17 +53,17 @@ export function calculateContainerSize(
   }
 
   // 태블릿/데스크톱: 높이 기준으로 비율 계산
-  const heightRatio = windowWidth < BREAKPOINTS.desktop
-    ? VIEWPORT_RATIOS.tablet
-    : VIEWPORT_RATIOS.desktop;
+  const isDesktop = windowWidth >= BREAKPOINTS.desktop;
+  const heightRatio = isDesktop ? VIEWPORT_RATIOS.desktop : VIEWPORT_RATIOS.tablet;
+  const aspectRatio = isDesktop ? DESKTOP_ASPECT_RATIO : MOBILE_ASPECT_RATIO;
 
   const targetHeight = Math.min(windowHeight * heightRatio, MAX_CONTAINER_HEIGHT);
-  const targetWidth = Math.min(targetHeight * MOBILE_ASPECT_RATIO, MAX_CONTAINER_WIDTH);
+  const targetWidth = Math.min(targetHeight * aspectRatio, MAX_CONTAINER_WIDTH);
 
   // 화면이 좁으면 너비 기준으로 높이 재계산
   if (targetWidth > windowWidth * 0.95) {
     const adjustedWidth = windowWidth * 0.95;
-    const adjustedHeight = adjustedWidth / MOBILE_ASPECT_RATIO;
+    const adjustedHeight = adjustedWidth / aspectRatio;
     return {
       width: adjustedWidth,
       height: Math.min(adjustedHeight, windowHeight * heightRatio),

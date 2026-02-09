@@ -57,8 +57,8 @@ export default function ViewerScreen() {
   // TTS enabled 토글 마운트 추적 (초기 마운트 skip용)
   const ttsEnabledMounted = useRef(false);
 
-  // 진행률 초기 복원 완료 추적 (1회만 실행)
-  const progressRestoredRef = useRef(false);
+  // 진행률 초기 복원 완료 추적 (state로 관리 → TTS effect 트리거)
+  const [progressRestored, setProgressRestored] = useState(false);
 
   // Swipe refs
   const touchStartX = useRef(0);
@@ -242,6 +242,24 @@ export default function ViewerScreen() {
     }
   }, [bgmEnabled]);
 
+  // 웹: 브라우저 탭 비활성 시 BGM/TTS 일시정지, 복귀 시 재개
+  useEffect(() => {
+    if (Platform.OS !== "web") return;
+
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        bgmRef.current?.pauseAsync();
+        ttsRef.current?.pauseAsync();
+      } else {
+        if (bgmEnabled) bgmRef.current?.playAsync();
+        if (ttsEnabled) ttsRef.current?.playAsync();
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
+  }, [bgmEnabled, ttsEnabled]);
+
   // TTS: 페이지/언어 변경 시 오디오 재생
   const playTts = useCallback(async () => {
     // 자동 넘김 타이머 정리
@@ -294,9 +312,9 @@ export default function ViewerScreen() {
     }
   }, [pages, currentPage, language, ttsEnabled, ttsVolume, tryAutoAdvance]);
 
-  // 진행률 복원 완료 후에만 TTS 시작 (첫 페이지 끊김 방지)
+  // 진행률 복원 완료 후 TTS 시작 (progressRestored가 true가 된 후에만)
   useEffect(() => {
-    if (!progressFetched) return;
+    if (!progressRestored) return;
     playTts();
     return () => {
       if (autoAdvanceTimer.current) {
@@ -306,7 +324,7 @@ export default function ViewerScreen() {
       ttsRef.current?.unloadAsync();
       ttsRef.current = null;
     };
-  }, [currentPage, language, progressFetched]);
+  }, [currentPage, language, progressRestored]);
 
   // TTS: ttsEnabled 토글 (초기 마운트 skip — TTS는 [currentPage, language, progressFetched] effect에서 시작)
   useEffect(() => {
@@ -332,17 +350,18 @@ export default function ViewerScreen() {
     ttsRef.current?.setVolumeAsync(ttsVolume / 100);
   }, [ttsVolume]);
 
-  // Restore progress (초기 1회만 — 이후 saveProgress의 invalidateQueries로 인한 재실행 방지)
+  // Restore progress (초기 1회만 → 완료 후 progressRestored=true로 TTS 시작)
   useEffect(() => {
-    if (progressRestoredRef.current) return;
-    if (progressData && pages.length > 0) {
-      progressRestoredRef.current = true;
-      if (progressData.currentPage > 0 && !progressData.isCompleted) {
+    if (progressRestored) return;
+    if (progressFetched && pages.length > 0) {
+      if (progressData && progressData.currentPage > 0 && !progressData.isCompleted) {
         const savedPage = Math.min(progressData.currentPage - 1, pages.length - 1);
         setCurrentPage(savedPage);
       }
+      // 복원 여부와 관계없이 "확인 완료" 표시 → 다음 렌더에서 TTS 시작
+      setProgressRestored(true);
     }
-  }, [progressData, pages.length]);
+  }, [progressFetched, progressData, pages.length, progressRestored]);
 
   // Save progress on page change
   useEffect(() => {
@@ -493,14 +512,14 @@ export default function ViewerScreen() {
 
       {/* Main Content with Swipe */}
       <View
-        className="flex-1"
+        className="flex-1 justify-center"
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
       >
-        {/* Media Area — 상단 고정 */}
-        <View className="items-center px-4 pt-2">
+        {/* Media Area */}
+        <View className="items-center" style={{ paddingHorizontal: "2%" }}>
           {page.imageUrl ? (
-            <View className="w-full max-w-lg aspect-[3/2] rounded-2xl overflow-hidden">
+            <View className="w-full aspect-[3/2] rounded-xl overflow-hidden">
               <Image
                 source={{ uri: getOptimizedImageUrl(page.imageUrl, 800) }}
                 style={{ width: "100%", height: "100%" }}
@@ -522,12 +541,12 @@ export default function ViewerScreen() {
               )}
             </View>
           ) : (
-            <View className="w-full max-w-lg aspect-[3/2] rounded-2xl bg-[#2A2A3E]" />
+            <View className="w-full aspect-[3/2] rounded-xl bg-[#2A2A3E]" />
           )}
         </View>
 
-        {/* Text Area — 하단, 제한된 높이 + 스크롤 */}
-        <View className="flex-1 justify-end px-6 pt-4 pb-2">
+        {/* Text Area — 미디어 바로 아래, 긴 자막 스크롤 */}
+        <View className="px-6 pt-4">
           <ScrollView
             className="rounded-xl bg-white/10 px-5 py-4"
             style={{ maxHeight: 160 }}

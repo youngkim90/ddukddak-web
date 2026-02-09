@@ -5,7 +5,7 @@ import * as WebBrowser from "expo-web-browser";
 import * as Linking from "expo-linking";
 import { supabase } from "@/lib/supabase";
 import { useAuthStore } from "@/stores/authStore";
-import { usersApi, subscriptionsApi } from "@/lib/api";
+import { usersApi, subscriptionsApi, progressApi } from "@/lib/api";
 
 // 네이티브에서만 팝업 세션 완료 처리 (웹은 리다이렉트 방식 사용)
 if (Platform.OS !== "web") {
@@ -44,6 +44,9 @@ export function useAuth() {
       } catch {
         setSubscription(null);
       }
+
+      // 로그인 시 전체 진행률 초기화
+      try { await progressApi.resetAll(); } catch {}
 
       router.replace("/(tabs)/home");
       return { success: true };
@@ -148,6 +151,9 @@ export function useAuth() {
             } catch {
               setSubscription(null);
             }
+
+            // 로그인 시 전체 진행률 초기화
+            try { await progressApi.resetAll(); } catch {}
 
             router.replace("/(tabs)/home");
           }

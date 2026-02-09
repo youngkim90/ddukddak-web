@@ -53,7 +53,6 @@ export default function RootLayout() {
     NanumPenScript: require("../assets/fonts/NanumPenScript-Regular.ttf"),
   });
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
-
   useEffect(() => {
     if (fontsLoaded) {
       SplashScreen.hideAsync();

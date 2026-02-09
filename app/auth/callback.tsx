@@ -4,7 +4,7 @@ import { useRouter, useLocalSearchParams } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import { supabase } from "@/lib/supabase";
 import { useAuthStore } from "@/stores/authStore";
-import { usersApi, subscriptionsApi } from "@/lib/api";
+import { usersApi, subscriptionsApi, progressApi } from "@/lib/api";
 
 // 네이티브 전용: 팝업 세션 완료 처리
 if (Platform.OS !== "web") {
@@ -34,6 +34,7 @@ export default function AuthCallbackScreen() {
             } catch {
               setSubscription(null);
             }
+            try { await progressApi.resetAll(); } catch {}
             router.replace("/(tabs)/home");
           } else {
             // 세션이 아직 없으면 약간 대기 후 재확인 (Supabase 자동 감지 대기)
@@ -42,6 +43,7 @@ export default function AuthCallbackScreen() {
             if (retrySession) {
               const userData = await usersApi.getMe();
               setUser(userData);
+              try { await progressApi.resetAll(); } catch {}
               router.replace("/(tabs)/home");
             } else {
               router.replace("/login");
@@ -66,6 +68,7 @@ export default function AuthCallbackScreen() {
             } catch {
               setSubscription(null);
             }
+            try { await progressApi.resetAll(); } catch {}
           }
 
           router.replace("/(tabs)/home");
