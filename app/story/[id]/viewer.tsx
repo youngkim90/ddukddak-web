@@ -88,10 +88,14 @@ export default function ViewerScreen() {
   // Refs for stale closure prevention (callbacks)
   const autoPlayRef = useRef(autoPlayEnabled);
   const totalPagesRef = useRef(totalPages);
+  const routerRef = useRef(router);
+  const idRef = useRef(id);
   autoPlayRef.current = autoPlayEnabled;
   totalPagesRef.current = totalPages;
+  routerRef.current = router;
+  idRef.current = id;
 
-  // 자동 넘김: TTS + 비디오 모두 완료 시 1초 뒤 다음 페이지
+  // 자동 넘김: TTS + 비디오 모두 완료 시 1초 뒤 다음 페이지 / 마지막 페이지면 3초 후 이전 화면
   const tryAutoAdvance = useCallback(() => {
     if (!ttsFinishedRef.current || !videoFirstPlayDoneRef.current) return;
     if (!autoPlayRef.current) return;
@@ -100,6 +104,10 @@ export default function ViewerScreen() {
     autoAdvanceTimer.current = setTimeout(() => {
       setCurrentPage((prev) => {
         if (prev < totalPagesRef.current - 1) return prev + 1;
+        // 마지막 페이지 → 3초 후 동화 상세로 이동
+        setTimeout(() => {
+          routerRef.current.replace(`/story/${idRef.current}`);
+        }, 2000); // 이미 1초 대기 후이므로 추가 2초 (총 3초)
         return prev;
       });
     }, 1000);
@@ -112,36 +120,33 @@ export default function ViewerScreen() {
     p.muted = true;
   });
 
-  // 비디오 폴백/재시도 타이머 refs
+  // 비디오 폴백 타이머 ref
   const videoFallbackTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const videoRetryTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // 비디오 타이머 전체 정리 헬퍼
+  // 비디오 타이머 정리 헬퍼
   const clearVideoTimers = useCallback(() => {
     if (videoFallbackTimer.current) {
       clearTimeout(videoFallbackTimer.current);
       videoFallbackTimer.current = null;
     }
-    if (videoRetryTimer.current) {
-      clearTimeout(videoRetryTimer.current);
-      videoRetryTimer.current = null;
-    }
   }, []);
 
-  // 비디오: statusChange로 readyToPlay 시 play() (백업 트리거)
+  // 비디오: statusChange로 readyToPlay 시 play()
   useEffect(() => {
     if (!player) return;
     const sub = player.addListener("statusChange", ({ status }) => {
       if (status === "readyToPlay") {
+        clearVideoTimers();
         player.play();
       }
-      if (status === "error") {
+      if (status === "error" && !videoFirstPlayDoneRef.current) {
+        // 비디오 로드 실패 시에만 auto-advance (이미 완료된 상태면 무시)
         videoFirstPlayDoneRef.current = true;
         tryAutoAdvance();
       }
     });
     return () => sub.remove();
-  }, [player, tryAutoAdvance]);
+  }, [player, tryAutoAdvance, clearVideoTimers]);
 
   // 비디오 첫 재생 완료 감지
   useEffect(() => {
@@ -168,13 +173,7 @@ export default function ViewerScreen() {
       videoFirstPlayDoneRef.current = false;
       player.loop = false;
       player.replace(currentPageData.videoUrl);
-      // replace 후 직접 play() 시도 (readyToPlay 이벤트 미발생 대비)
-      player.play();
-
-      // 1초 후 재생 안 되고 있으면 재시도
-      videoRetryTimer.current = setTimeout(() => {
-        try { player.play(); } catch {}
-      }, 1000);
+      // play()는 statusChange 리스너에서 readyToPlay 시 호출 (replace 직후 호출하면 충돌)
 
       // 10초 폴백: playToEnd 미발생 시 자동 진행
       videoFallbackTimer.current = setTimeout(() => {
