@@ -51,8 +51,11 @@ export default function ViewerScreen() {
   const [ttsEnabled, setTtsEnabled] = useState(true);
   const [bgmEnabled, setBgmEnabled] = useState(true);
   const [autoPlayEnabled, setAutoPlayEnabled] = useState(true);
-  const [ttsVolume, setTtsVolume] = useState(80);
-  const [bgmVolume, setBgmVolume] = useState(50);
+  const [ttsVolume, setTtsVolume] = useState(60);
+  const [bgmVolume, setBgmVolume] = useState(30);
+
+  // TTS enabled 토글 마운트 추적 (초기 마운트 skip용)
+  const ttsEnabledMounted = useRef(false);
 
   // Swipe refs
   const touchStartX = useRef(0);
@@ -106,10 +109,31 @@ export default function ViewerScreen() {
     p.muted = true;
   });
 
+  // 비디오 폴백 타이머 ref
+  const videoFallbackTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // 비디오: statusChange로 readyToPlay 후 안전하게 play()
+  useEffect(() => {
+    if (!player) return;
+    const sub = player.addListener("statusChange", ({ status, error }) => {
+      if (status === "readyToPlay") player.play();
+      if (status === "error") {
+        videoFirstPlayDoneRef.current = true;
+        tryAutoAdvance();
+      }
+    });
+    return () => sub.remove();
+  }, [player, tryAutoAdvance]);
+
   // 비디오 첫 재생 완료 감지
   useEffect(() => {
     if (!player) return;
     const subscription = player.addListener("playToEnd", () => {
+      // 폴백 타이머 정리
+      if (videoFallbackTimer.current) {
+        clearTimeout(videoFallbackTimer.current);
+        videoFallbackTimer.current = null;
+      }
       videoFirstPlayDoneRef.current = true;
       // 첫 재생 완료 후 루프 활성화 (비주얼 반복)
       player.loop = true;
@@ -124,15 +148,37 @@ export default function ViewerScreen() {
     const currentPageData = pages[currentPage];
     if (!currentPageData || !player) return;
 
+    // 이전 폴백 타이머 정리
+    if (videoFallbackTimer.current) {
+      clearTimeout(videoFallbackTimer.current);
+      videoFallbackTimer.current = null;
+    }
+
     if (currentPageData.mediaType === "video" && currentPageData.videoUrl) {
       videoFirstPlayDoneRef.current = false;
       player.loop = false;
       player.replace(currentPageData.videoUrl);
-      player.play();
+      // play()는 statusChange 리스너에서 readyToPlay 시 호출
+
+      // 10초 폴백: playToEnd 미발생 시 자동 진행
+      videoFallbackTimer.current = setTimeout(() => {
+        if (!videoFirstPlayDoneRef.current) {
+          videoFirstPlayDoneRef.current = true;
+          player.loop = true;
+          tryAutoAdvance();
+        }
+      }, 10000);
     } else {
       videoFirstPlayDoneRef.current = true;
       player.pause();
     }
+
+    return () => {
+      if (videoFallbackTimer.current) {
+        clearTimeout(videoFallbackTimer.current);
+        videoFallbackTimer.current = null;
+      }
+    };
   }, [currentPage, pages, player]);
 
   // BGM: 오디오 모드 설정 (iOS 무음모드에서도 재생)
@@ -252,8 +298,12 @@ export default function ViewerScreen() {
     };
   }, [currentPage, language, progressFetched]);
 
-  // TTS: ttsEnabled 토글
+  // TTS: ttsEnabled 토글 (초기 마운트 skip — TTS는 [currentPage, language, progressFetched] effect에서 시작)
   useEffect(() => {
+    if (!ttsEnabledMounted.current) {
+      ttsEnabledMounted.current = true;
+      return;
+    }
     if (!ttsRef.current) {
       if (ttsEnabled) playTts();
       return;
@@ -429,12 +479,12 @@ export default function ViewerScreen() {
 
       {/* Main Content with Swipe */}
       <View
-        className="flex-1 justify-center"
+        className="flex-1"
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
       >
-        {/* Media Area (이미지 + 비디오 오버레이) */}
-        <View className="items-center px-4">
+        {/* Media Area — 상단 고정 */}
+        <View className="items-center px-4 pt-2">
           {page.imageUrl ? (
             <View className="w-full max-w-lg aspect-[3/2] rounded-2xl overflow-hidden">
               <Image
@@ -462,16 +512,20 @@ export default function ViewerScreen() {
           )}
         </View>
 
-        {/* Text Area */}
-        <View className="px-6 pt-4">
-          <View className="rounded-xl bg-white/10 px-5 py-5">
+        {/* Text Area — 하단, 제한된 높이 + 스크롤 */}
+        <View className="flex-1 justify-end px-6 pt-4 pb-2">
+          <ScrollView
+            className="rounded-xl bg-white/10 px-5 py-4"
+            style={{ maxHeight: 160 }}
+            showsVerticalScrollIndicator={false}
+          >
             <Text
-              className="text-center leading-10 text-white"
-              style={{ fontFamily: "GowunDodum", fontSize: 23, fontWeight: "bold" }}
+              className="text-center leading-8 text-white"
+              style={{ fontFamily: "GowunDodum", fontSize: 20, fontWeight: "bold" }}
             >
               {language === "ko" ? page.textKo : page.textEn}
             </Text>
-          </View>
+          </ScrollView>
         </View>
       </View>
 
