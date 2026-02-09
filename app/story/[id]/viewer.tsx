@@ -5,7 +5,6 @@ import {
   Pressable,
   Modal,
   ScrollView,
-  useWindowDimensions,
   BackHandler,
   Platform,
   GestureResponderEvent,
@@ -29,18 +28,10 @@ import { Audio } from "expo-av";
 import { useStory, useStoryPages } from "@/hooks/useStories";
 import { useProgress, useSaveProgress } from "@/hooks/useProgress";
 import { getOptimizedImageUrl } from "@/lib/utils";
-import { calculateContainerSize } from "@/lib/layout";
 
 export default function ViewerScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
-
-  // Calculate actual container size for web
-  const containerSize = Platform.OS === "web"
-    ? calculateContainerSize(windowWidth, windowHeight)
-    : { width: windowWidth, height: windowHeight };
-
   const searchParams = useLocalSearchParams<{ id: string; lang?: string }>();
   const initialLang = (searchParams.lang as "ko" | "en") || "ko";
 
@@ -493,7 +484,7 @@ export default function ViewerScreen() {
       <StatusBar hidden />
 
       {/* Top Bar */}
-      <View className="flex-row items-center justify-between px-4 py-3 pt-14">
+      <View className="flex-row items-center justify-between px-4 py-2 pt-4">
         <Pressable
           onPress={handleClose}
           className="h-10 w-10 items-center justify-center rounded-full bg-white/10"
@@ -608,7 +599,7 @@ export default function ViewerScreen() {
       </View>
 
       {/* Bottom Controls */}
-      <View className="flex-row items-center justify-center gap-3 px-6 pb-10 pt-2">
+      <View className="flex-row items-center justify-center gap-3 px-6 pb-14 pt-2">
         <Pressable
           onPress={() => setLanguage((prev) => (prev === "ko" ? "en" : "ko"))}
           className="rounded-full bg-white/10 px-4 py-2"
