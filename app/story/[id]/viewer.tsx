@@ -528,6 +528,8 @@ export default function ViewerScreen() {
                   }}
                   contentFit="cover"
                   nativeControls={false}
+                  playsInline={true}
+                  allowsFullscreen={false}
                 />
               )}
             </View>
