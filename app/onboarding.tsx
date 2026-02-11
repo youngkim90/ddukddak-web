@@ -53,7 +53,9 @@ export default function OnboardingScreen() {
     if (isLastSlide) {
       handleComplete();
     } else {
-      flatListRef.current?.scrollToIndex({ index: currentPage + 1 });
+      const nextPage = currentPage + 1;
+      flatListRef.current?.scrollToIndex({ index: nextPage });
+      setCurrentPage(nextPage);
     }
   };
 
