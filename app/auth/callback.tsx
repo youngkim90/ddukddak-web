@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { View, Text, ActivityIndicator, Platform } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
+import { useQueryClient } from "@tanstack/react-query";
 import * as WebBrowser from "expo-web-browser";
 import { supabase } from "@/lib/supabase";
 import { useAuthStore } from "@/stores/authStore";
@@ -14,6 +15,7 @@ if (Platform.OS !== "web") {
 export default function AuthCallbackScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
+  const queryClient = useQueryClient();
   const { setUser, setSubscription } = useAuthStore();
 
   useEffect(() => {
@@ -35,6 +37,7 @@ export default function AuthCallbackScreen() {
               setSubscription(null);
             }
             try { await progressApi.resetAll(); } catch {}
+            queryClient.clear();
             router.replace("/(tabs)/home");
           } else {
             // 세션이 아직 없으면 약간 대기 후 재확인 (Supabase 자동 감지 대기)
@@ -44,6 +47,7 @@ export default function AuthCallbackScreen() {
               const userData = await usersApi.getMe();
               setUser(userData);
               try { await progressApi.resetAll(); } catch {}
+              queryClient.clear();
               router.replace("/(tabs)/home");
             } else {
               router.replace("/login");
@@ -69,6 +73,7 @@ export default function AuthCallbackScreen() {
               setSubscription(null);
             }
             try { await progressApi.resetAll(); } catch {}
+            queryClient.clear();
           }
 
           router.replace("/(tabs)/home");

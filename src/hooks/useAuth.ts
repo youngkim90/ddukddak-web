@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Platform } from "react-native";
 import { useRouter } from "expo-router";
+import { useQueryClient } from "@tanstack/react-query";
 import * as WebBrowser from "expo-web-browser";
 import * as Linking from "expo-linking";
 import { supabase } from "@/lib/supabase";
@@ -14,6 +15,7 @@ if (Platform.OS !== "web") {
 
 export function useAuth() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { user, subscription, setUser, setSubscription, reset } = useAuthStore();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -45,8 +47,9 @@ export function useAuth() {
         setSubscription(null);
       }
 
-      // 로그인 시 전체 진행률 초기화
+      // 로그인 시 전체 진행률 초기화 + 캐시 클리어
       try { await progressApi.resetAll(); } catch {}
+      queryClient.clear();
 
       router.replace("/(tabs)/home");
       return { success: true };
@@ -152,8 +155,9 @@ export function useAuth() {
               setSubscription(null);
             }
 
-            // 로그인 시 전체 진행률 초기화
+            // 로그인 시 전체 진행률 초기화 + 캐시 클리어
             try { await progressApi.resetAll(); } catch {}
+            queryClient.clear();
 
             router.replace("/(tabs)/home");
           }
@@ -176,6 +180,7 @@ export function useAuth() {
 
     try {
       await supabase.auth.signOut();
+      queryClient.clear();
       reset();
       router.replace("/login");
       return { success: true };
