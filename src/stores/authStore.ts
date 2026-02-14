@@ -22,7 +22,7 @@ export const useAuthStore = create<AuthState>()(
       setUser: (user) => set({ user }),
       setSubscription: (subscription) => set({ subscription }),
       setInitialized: (value) => set({ isInitialized: value }),
-      reset: () => set({ user: null, subscription: null, isInitialized: false }),
+      reset: () => set({ user: null, subscription: null }),
     }),
     {
       name: "auth-storage",
