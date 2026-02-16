@@ -64,11 +64,12 @@ export default function ViewerScreen() {
   const ttsRef = useRef<Audio.Sound | null>(null);
   const ttsLoadingRef = useRef(false);
 
-  // Auto-advance: TTS와 비디오 중 긴 쪽 완료 후 1초 대기
+  // Auto-advance: TTS와 비디오 중 긴 쪽 완료 후 대기
   const ttsFinishedRef = useRef(true);
   const videoFirstPlayDoneRef = useRef(true);
   const videoPlayCountRef = useRef(0);
   const autoAdvanceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pageStartTimeRef = useRef(Date.now());
 
   // BGM
   const bgmRef = useRef<Audio.Sound | null>(null);
@@ -87,22 +88,29 @@ export default function ViewerScreen() {
   routerRef.current = router;
   idRef.current = id;
 
-  // 자동 넘김: TTS + 비디오 모두 완료 시 1초 뒤 다음 페이지 / 마지막 페이지면 3초 후 이전 화면
+  // 자동 넘김: TTS + 비디오 모두 완료 시 다음 페이지 (최소 3초 보장)
+  const MIN_PAGE_DISPLAY_MS = 3000;
+
   const tryAutoAdvance = useCallback(() => {
     if (!ttsFinishedRef.current || !videoFirstPlayDoneRef.current) return;
     if (!autoPlayRef.current) return;
 
     if (autoAdvanceTimer.current) clearTimeout(autoAdvanceTimer.current);
+
+    // 페이지 표시 후 최소 3초 보장 (iOS TTS/비디오 실패 시 빠른 넘김 방지)
+    const elapsed = Date.now() - pageStartTimeRef.current;
+    const delay = Math.max(1000, MIN_PAGE_DISPLAY_MS - elapsed);
+
     autoAdvanceTimer.current = setTimeout(() => {
       setCurrentPage((prev) => {
         if (prev < totalPagesRef.current - 1) return prev + 1;
         // 마지막 페이지 → 3초 후 동화 상세로 이동
         setTimeout(() => {
           routerRef.current.replace(`/story/${idRef.current}`);
-        }, 2000); // 이미 1초 대기 후이므로 추가 2초 (총 3초)
+        }, 2000);
         return prev;
       });
-    }, 1000);
+    }, delay);
   }, []);
 
   // Video player (호출 순서 보장 - early return 전에 선언)
@@ -359,8 +367,10 @@ export default function ViewerScreen() {
     }
   }, [progressFetched, progressData, pages.length, progressRestored]);
 
-  // Save progress on page change
+  // Save progress on page change + 페이지 시작 시간 기록
   useEffect(() => {
+    pageStartTimeRef.current = Date.now();
+
     if (totalPages === 0) return;
 
     const timer = setTimeout(() => {
