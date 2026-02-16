@@ -67,6 +67,7 @@ export default function ViewerScreen() {
   // Auto-advance: TTS와 비디오 중 긴 쪽 완료 후 1초 대기
   const ttsFinishedRef = useRef(true);
   const videoFirstPlayDoneRef = useRef(true);
+  const videoPlayCountRef = useRef(0);
   const autoAdvanceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // BGM
@@ -139,16 +140,20 @@ export default function ViewerScreen() {
     return () => sub.remove();
   }, [player, tryAutoAdvance, clearVideoTimers]);
 
-  // 비디오 첫 재생 완료 감지
+  // 비디오 재생 완료 감지 (최대 2회 재생)
   useEffect(() => {
     if (!player) return;
     const subscription = player.addListener("playToEnd", () => {
       clearVideoTimers();
-      videoFirstPlayDoneRef.current = true;
-      // 첫 재생 완료 후 루프 활성화 (비주얼 반복)
-      player.loop = true;
-      player.play();
-      tryAutoAdvance();
+      videoPlayCountRef.current += 1;
+
+      if (videoPlayCountRef.current === 1) {
+        // 1회 재생 완료 → auto-advance 신호 + 2회차 재생
+        videoFirstPlayDoneRef.current = true;
+        tryAutoAdvance();
+        player.replay();
+      }
+      // 2회 재생 완료 → 정지 (더 이상 반복하지 않음)
     });
     return () => subscription.remove();
   }, [player, tryAutoAdvance, clearVideoTimers]);
@@ -162,6 +167,7 @@ export default function ViewerScreen() {
 
     if (currentPageData.mediaType === "video" && currentPageData.videoUrl) {
       videoFirstPlayDoneRef.current = false;
+      videoPlayCountRef.current = 0;
       player.loop = false;
       player.replace(currentPageData.videoUrl);
       // play()는 statusChange 리스너에서 readyToPlay 시 호출 (replace 직후 호출하면 충돌)
@@ -170,7 +176,6 @@ export default function ViewerScreen() {
       videoFallbackTimer.current = setTimeout(() => {
         if (!videoFirstPlayDoneRef.current) {
           videoFirstPlayDoneRef.current = true;
-          player.loop = true;
           tryAutoAdvance();
         }
       }, 10000);
