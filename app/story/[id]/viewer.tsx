@@ -60,9 +60,10 @@ export default function ViewerScreen() {
   const { data: progressData, isFetched: progressFetched } = useProgress(id);
   const saveProgress = useSaveProgress(id);
 
-  // TTS
+  // TTS (단일 인스턴스 재사용 — iOS Safari 자동재생 정책 대응)
   const ttsRef = useRef<Audio.Sound | null>(null);
   const ttsLoadingRef = useRef(false);
+  const ttsAbortRef = useRef(0); // 동시 호출 방지용 세대 카운터
 
   // Auto-advance: TTS와 비디오 중 긴 쪽 완료 후 대기
   const ttsFinishedRef = useRef(true);
@@ -204,6 +205,17 @@ export default function ViewerScreen() {
     });
   }, []);
 
+  // TTS: 단일 Audio.Sound 인스턴스 생성 (iOS Safari 자동재생 정책 대응)
+  // 매 페이지마다 새 인스턴스 생성하면 iOS가 차단 → 하나를 재사용
+  useEffect(() => {
+    const sound = new Audio.Sound();
+    ttsRef.current = sound;
+    return () => {
+      sound.unloadAsync().catch(() => {});
+      ttsRef.current = null;
+    };
+  }, []);
+
   // BGM: 로드 및 재생 (동화별 1곡, 무한 루프)
   // 볼륨: 슬라이더 0~100 → 실제 출력 0~20% (TTS 대비 10~20%)
   const MAX_BGM_VOLUME = 0.2;
@@ -264,7 +276,7 @@ export default function ViewerScreen() {
     return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
   }, [bgmEnabled, ttsEnabled]);
 
-  // TTS: 페이지/언어 변경 시 오디오 재생
+  // TTS: 페이지/언어 변경 시 오디오 재생 (단일 인스턴스 재사용)
   const playTts = useCallback(async () => {
     // 자동 넘김 타이머 정리
     if (autoAdvanceTimer.current) {
@@ -272,18 +284,21 @@ export default function ViewerScreen() {
       autoAdvanceTimer.current = null;
     }
 
-    // 이전 TTS 정리
-    if (ttsRef.current) {
-      await ttsRef.current.unloadAsync();
-      ttsRef.current = null;
-    }
+    const sound = ttsRef.current;
+    if (!sound) return;
+
+    // 세대 카운터 증가 (이전 호출의 콜백 무효화)
+    const generation = ++ttsAbortRef.current;
+
+    // 이전 오디오 정리 (인스턴스는 유지)
+    try { await sound.unloadAsync(); } catch {}
 
     const currentPageData = pages[currentPage];
     if (!currentPageData) return;
 
     const audioUrl = language === "ko" ? currentPageData.audioUrlKo : currentPageData.audioUrlEn;
 
-    if (!ttsEnabled || ttsLoadingRef.current || !audioUrl) {
+    if (!ttsEnabled || !audioUrl) {
       // TTS 재생 안 함 → 즉시 완료 처리
       ttsFinishedRef.current = true;
       tryAutoAdvance();
@@ -291,16 +306,19 @@ export default function ViewerScreen() {
     }
 
     ttsFinishedRef.current = false;
-    ttsLoadingRef.current = true;
     try {
-      const { sound } = await Audio.Sound.createAsync(
+      await sound.loadAsync(
         { uri: audioUrl },
         { volume: ttsVolume / 100, shouldPlay: true }
       );
-      ttsRef.current = sound;
+
+      // 세대 불일치 시 무시 (이미 다음 페이지로 전환됨)
+      if (ttsAbortRef.current !== generation) return;
+
       setIsPlaying(true);
 
       sound.setOnPlaybackStatusUpdate((status) => {
+        if (ttsAbortRef.current !== generation) return;
         if (!status.isLoaded) return;
         if (status.didJustFinish) {
           setIsPlaying(false);
@@ -309,10 +327,9 @@ export default function ViewerScreen() {
         }
       });
     } catch {
+      if (ttsAbortRef.current !== generation) return;
       ttsFinishedRef.current = true;
       tryAutoAdvance();
-    } finally {
-      ttsLoadingRef.current = false;
     }
   }, [pages, currentPage, language, ttsEnabled, ttsVolume, tryAutoAdvance]);
 
@@ -325,8 +342,8 @@ export default function ViewerScreen() {
         clearTimeout(autoAdvanceTimer.current);
         autoAdvanceTimer.current = null;
       }
-      ttsRef.current?.unloadAsync();
-      ttsRef.current = null;
+      // 인스턴스 유지, 재생만 정지 (iOS Safari 자동재생 정책 대응)
+      ttsRef.current?.stopAsync().catch(() => {});
     };
   }, [currentPage, language, progressRestored]);
 
@@ -336,22 +353,27 @@ export default function ViewerScreen() {
       ttsEnabledMounted.current = true;
       return;
     }
-    if (!ttsRef.current) {
-      if (ttsEnabled) playTts();
-      return;
-    }
+    const sound = ttsRef.current;
+    if (!sound) return;
+
     if (ttsEnabled) {
-      ttsRef.current.playAsync();
-      setIsPlaying(true);
+      sound.getStatusAsync().then((status) => {
+        if (status.isLoaded) {
+          sound.playAsync();
+          setIsPlaying(true);
+        } else {
+          playTts();
+        }
+      }).catch(() => playTts());
     } else {
-      ttsRef.current.pauseAsync();
+      sound.pauseAsync().catch(() => {});
       setIsPlaying(false);
     }
   }, [ttsEnabled]);
 
   // TTS: 볼륨 변경
   useEffect(() => {
-    ttsRef.current?.setVolumeAsync(ttsVolume / 100);
+    ttsRef.current?.setVolumeAsync(ttsVolume / 100).catch(() => {});
   }, [ttsVolume]);
 
   // Restore progress (초기 1회만 → 완료 후 progressRestored=true로 TTS 시작)
