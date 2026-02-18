@@ -40,6 +40,7 @@ export default function OnboardingScreen() {
     ? calculateContainerSize(windowWidth, windowHeight).width
     : windowWidth;
   const [currentPage, setCurrentPage] = useState(0);
+  const [contentHeight, setContentHeight] = useState(0);
   const flatListRef = useRef<FlatList>(null);
 
   const isLastSlide = currentPage === slides.length - 1;
@@ -54,14 +55,17 @@ export default function OnboardingScreen() {
       handleComplete();
     } else {
       const nextPage = currentPage + 1;
-      flatListRef.current?.scrollToIndex({ index: nextPage });
+      flatListRef.current?.scrollToOffset({ offset: nextPage * width, animated: true });
       setCurrentPage(nextPage);
     }
   };
 
   return (
     <View className="flex-1 bg-background">
-      <View className="flex-1">
+      <View
+        className="flex-1"
+        onLayout={(e) => setContentHeight(e.nativeEvent.layout.height)}
+      >
         <FlatList
           ref={flatListRef}
           data={slides}
@@ -75,8 +79,8 @@ export default function OnboardingScreen() {
           keyExtractor={(_, i) => String(i)}
           renderItem={({ item }) => (
             <View
-              style={{ width }}
-              className="flex-1 items-center justify-center px-8 pb-24"
+              style={{ width, height: contentHeight || undefined }}
+              className="items-center justify-center px-8"
             >
               <View className="h-48 w-48 items-center justify-center rounded-full bg-[#FFE5CC]">
                 <Text className="text-7xl" accessibilityElementsHidden>{item.emoji}</Text>
@@ -99,11 +103,14 @@ export default function OnboardingScreen() {
           {isLastSlide ? "시작하기" : "다음"}
         </Button>
 
-        {!isLastSlide && (
-          <Pressable onPress={handleComplete} className="items-center py-2">
-            <Text className="text-sm text-text-sub">건너뛰기</Text>
-          </Pressable>
-        )}
+        <Pressable
+          onPress={handleComplete}
+          className="items-center py-2"
+          style={{ opacity: isLastSlide ? 0 : 1 }}
+          disabled={isLastSlide}
+        >
+          <Text className="text-sm text-text-sub">건너뛰기</Text>
+        </Pressable>
       </View>
     </View>
   );
