@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { View, Text, ScrollView, Pressable, ActivityIndicator } from "react-native";
+import { View, Text, ScrollView, Pressable, ActivityIndicator, Platform } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Image } from "expo-image";
 import { Clock, BookOpen, Lock } from "lucide-react-native";
@@ -13,6 +13,7 @@ import {
   AGE_GROUP_LABELS,
   FREE_MODE,
 } from "@/lib/constants";
+import { activateWebTts } from "@/lib/webTts";
 import { getOptimizedImageUrl, formatDuration } from "@/lib/utils";
 import type { ApiError as ApiErrorType } from "@/types/story";
 
@@ -149,7 +150,10 @@ export default function StoryDetailScreen() {
           {/* Read Button */}
           {canRead ? (
             <Button
-              onPress={() => router.push(`/story/${id}/viewer?lang=${language}`)}
+              onPress={() => {
+                if (Platform.OS === "web") activateWebTts();
+                router.push(`/story/${id}/viewer?lang=${language}`);
+              }}
               fullWidth
               size="lg"
             >
