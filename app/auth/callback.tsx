@@ -37,7 +37,7 @@ export default function AuthCallbackScreen() {
               setSubscription(null);
             }
             try { await progressApi.resetAll(); } catch {}
-            queryClient.clear();
+            queryClient.removeQueries({ queryKey: ["progress"] });
             router.replace("/(tabs)/home");
           } else {
             // 세션이 아직 없으면 약간 대기 후 재확인 (Supabase 자동 감지 대기)
@@ -47,7 +47,7 @@ export default function AuthCallbackScreen() {
               const userData = await usersApi.getMe();
               setUser(userData);
               try { await progressApi.resetAll(); } catch {}
-              queryClient.clear();
+              queryClient.removeQueries({ queryKey: ["progress"] });
               router.replace("/(tabs)/home");
             } else {
               router.replace("/login");
@@ -73,7 +73,7 @@ export default function AuthCallbackScreen() {
               setSubscription(null);
             }
             try { await progressApi.resetAll(); } catch {}
-            queryClient.clear();
+            queryClient.removeQueries({ queryKey: ["progress"] });
           }
 
           router.replace("/(tabs)/home");

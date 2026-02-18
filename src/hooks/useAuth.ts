@@ -47,9 +47,9 @@ export function useAuth() {
         setSubscription(null);
       }
 
-      // 로그인 시 전체 진행률 초기화 + 캐시 클리어
+      // 로그인 시 전체 진행률 초기화 + 진행률 캐시 클리어 (전체 clear 시 목록 깜빡임 발생)
       try { await progressApi.resetAll(); } catch {}
-      queryClient.clear();
+      queryClient.removeQueries({ queryKey: ["progress"] });
 
       router.replace("/(tabs)/home");
       return { success: true };
@@ -155,9 +155,9 @@ export function useAuth() {
               setSubscription(null);
             }
 
-            // 로그인 시 전체 진행률 초기화 + 캐시 클리어
+            // 로그인 시 전체 진행률 초기화 + 진행률 캐시 클리어
             try { await progressApi.resetAll(); } catch {}
-            queryClient.clear();
+            queryClient.removeQueries({ queryKey: ["progress"] });
 
             router.replace("/(tabs)/home");
           }
