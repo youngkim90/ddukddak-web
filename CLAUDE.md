@@ -324,6 +324,27 @@ npm run build        # 빌드 (export)
 npm run ts:check     # TypeScript 검사
 ```
 
+### iOS 테스트 (Xcode Simulator)
+
+iOS Safari 환경 테스트는 Xcode iOS Simulator를 사용합니다.
+
+```bash
+# 시뮬레이터 부팅
+xcrun simctl boot "iPhone 17 Pro"
+open -a Simulator
+
+# 시뮬레이터에서 URL 열기 (프로덕션)
+xcrun simctl openurl booted "https://ddukddak.expo.app"
+
+# 시뮬레이터에서 URL 열기 (로컬)
+xcrun simctl openurl booted "http://localhost:3000"
+```
+
+**주의사항:**
+- iOS Simulator의 Safari는 실제 iOS Safari와 동일한 미디어 정책 적용 (autoplay 제한, 오디오 세션 등)
+- 실제 기기 없이 iOS Safari 동작 검증 가능
+- Runtime: iOS 26.2 설치됨
+
 ## 환경 변수
 
 `.env` 파일:
