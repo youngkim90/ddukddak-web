@@ -260,7 +260,8 @@ app/                            # Expo Router (파일 기반 라우팅)
 src/
 ├── components/
 │   ├── ui/                     # Button, Card, Input, Skeleton 등
-│   └── layout/                 # Header, HomeHeader, PageIndicator
+│   ├── layout/                 # Header, HomeHeader, PageIndicator
+│   └── story/                  # ViewerTopBar, ViewerMainContent 등 (뷰어 UI)
 ├── hooks/                      # useAuth, useStories, useProgress 등
 ├── lib/                        # api, supabase, constants, utils
 ├── providers/                  # QueryProvider, AuthProvider
@@ -286,6 +287,10 @@ src/
 | **Layout** | Header | `src/components/layout/Header.tsx` |
 | | HomeHeader | `src/components/layout/HomeHeader.tsx` |
 | | PageIndicator | `src/components/layout/PageIndicator.tsx` |
+| **Story** | ViewerTopBar | `src/components/story/ViewerTopBar.tsx` |
+| | ViewerMainContent | `src/components/story/ViewerMainContent.tsx` |
+| | ViewerControlBars | `src/components/story/ViewerControlBars.tsx` |
+| | ViewerSettingsModal | `src/components/story/ViewerSettingsModal.tsx` |
 
 ### 커스텀 훅
 
@@ -321,7 +326,8 @@ npm run dev:android  # Android
 npm run dev:ios      # iOS
 
 npm run build        # 빌드 (export)
-npm run ts:check     # TypeScript 검사
+npm run lint         # TypeScript 검사 + ESLint (JS 설정 파일)
+npm run ts:check     # TypeScript 검사 (단독)
 ```
 
 ### iOS 테스트 (Xcode Simulator)
@@ -512,6 +518,12 @@ eas deploy --prod
 
 ## 동화 뷰어 미디어 가이드
 
+### 뷰어 구조
+
+- `app/story/[id]/viewer.tsx` — 상태 관리 + 재생 로직 (TTS, BGM, 비디오, auto-advance)
+- `src/components/story/` — 순수 UI 컴포넌트 (props-only, 상태 없음)
+- 웹 미디어 세션 충돌 대응: `src/lib/webTts.ts` (단일 HTMLAudioElement 재사용 + 의도 기반 상태 추적)
+
 ### 미디어 타입
 
 | 타입 | 설명 | 구현 |
@@ -537,7 +549,7 @@ interface StoryPage {
 | 포맷 | MP4 (Cloudflare R2 스트리밍) |
 | 길이 | 2-3초 |
 | 음성 | 음소거 (`player.muted = true`) |
-| 반복 | 무한 루프 (`player.loop = true`) |
+| 반복 | 최대 2회 재생 후 정지 (`playToEnd` 카운트) |
 | 이미지 비율 | 3:2 (1536×1024 가로) |
 | 에러 처리 | 비디오 실패 시 이미지 폴백 (오버레이 패턴) |
 
@@ -552,4 +564,4 @@ interface StoryPage {
 
 ---
 
-*마지막 업데이트: 2026-02-08 (Phase 3: Free Mode 버그 수정, Lottie→expo-video 전환)*
+*마지막 업데이트: 2026-02-23 (뷰어 UI 모듈화, lint 체인 정상화, 비디오 2회 재생 제한)*
