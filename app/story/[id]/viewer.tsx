@@ -28,7 +28,7 @@ import { Audio } from "expo-av";
 import { useStory, useStoryPages } from "@/hooks/useStories";
 import { useProgress, useSaveProgress } from "@/hooks/useProgress";
 import { getOptimizedImageUrl } from "@/lib/utils";
-import { getWebTtsAudio, cleanupWebTts } from "@/lib/webTts";
+import { getWebTtsAudio, cleanupWebTts, safePauseWebTts, trackedPlay, isWebTtsActive, markWebTtsDone, resumeWebTts } from "@/lib/webTts";
 
 export default function ViewerScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -45,7 +45,7 @@ export default function ViewerScreen() {
   const [autoPlayEnabled, setAutoPlayEnabled] = useState(true);
   const [ttsVolume, setTtsVolume] = useState(60);
   const [bgmVolume, setBgmVolume] = useState(30);
-  const [videoReadyPage, setVideoReadyPage] = useState(-1);
+  const [videoVisible, setVideoVisible] = useState(false);
 
   // TTS enabled 토글 마운트 추적 (초기 마운트 skip용)
   const ttsEnabledMounted = useRef(false);
@@ -86,11 +86,13 @@ export default function ViewerScreen() {
   const currentPageRef = useRef(currentPage);
   const routerRef = useRef(router);
   const idRef = useRef(id);
+  const bgmEnabledRef = useRef(bgmEnabled);
   autoPlayRef.current = autoPlayEnabled;
   totalPagesRef.current = totalPages;
   currentPageRef.current = currentPage;
   routerRef.current = router;
   idRef.current = id;
+  bgmEnabledRef.current = bgmEnabled;
 
   // 자동 넘김: TTS + 비디오 모두 완료 시 다음 페이지 (최소 3초 보장)
   const MIN_PAGE_DISPLAY_MS = 3000;
@@ -109,6 +111,10 @@ export default function ViewerScreen() {
   const tryAutoAdvance = useCallback(() => {
     if (!ttsFinishedRef.current || !videoFirstPlayDoneRef.current) return;
     if (!autoPlayRef.current) return;
+
+    // 방어: 웹에서 TTS가 재생 중이어야 하는 상태면 넘기지 않음
+    // (브라우저가 비디오 미디어 세션으로 일시 pause해도 _shouldBePlaying은 true)
+    if (Platform.OS === "web" && isWebTtsActive()) return;
 
     if (autoAdvanceTimer.current) clearTimeout(autoAdvanceTimer.current);
 
@@ -130,9 +136,12 @@ export default function ViewerScreen() {
     p.muted = true;
   });
 
+  // 비디오 요청 URL 추적 (statusChange 가드용 — 페이지 상태 대신 사용)
+  const pendingVideoUrl = useRef<string | null>(null);
+
   // 비디오 타이머 refs
   const videoFallbackTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const videoRetryTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const videoLoadTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // 비디오 타이머 정리 헬퍼
   const clearVideoTimers = useCallback(() => {
@@ -140,9 +149,9 @@ export default function ViewerScreen() {
       clearTimeout(videoFallbackTimer.current);
       videoFallbackTimer.current = null;
     }
-    if (videoRetryTimer.current) {
-      clearTimeout(videoRetryTimer.current);
-      videoRetryTimer.current = null;
+    if (videoLoadTimer.current) {
+      clearTimeout(videoLoadTimer.current);
+      videoLoadTimer.current = null;
     }
   }, []);
 
@@ -150,10 +159,22 @@ export default function ViewerScreen() {
   useEffect(() => {
     if (!player) return;
     const sub = player.addListener("statusChange", ({ status }) => {
-      if (status === "readyToPlay") {
-        player.muted = true;
-        player.currentTime = 0;
-        Promise.resolve().then(() => player.play()).catch(() => {});
+      if (status === "readyToPlay" && pendingVideoUrl.current) {
+        player.play();
+        setVideoVisible(true);
+        // 비디오 미디어 세션이 TTS/BGM을 중단시킬 수 있음 → 200ms 후 명시적 복구
+        if (Platform.OS === "web") {
+          setTimeout(() => {
+            resumeWebTts();
+            if (bgmRef.current && bgmEnabledRef.current) {
+              bgmRef.current.getStatusAsync().then((s) => {
+                if (s.isLoaded && !s.isPlaying) {
+                  bgmRef.current?.playAsync().catch(() => {});
+                }
+              }).catch(() => {});
+            }
+          }, 200);
+        }
       }
       if (status === "error" && !videoFirstPlayDoneRef.current) {
         videoFirstPlayDoneRef.current = true;
@@ -161,18 +182,7 @@ export default function ViewerScreen() {
       }
     });
     return () => sub.remove();
-  }, [player, tryAutoAdvance, clearVideoTimers]);
-
-  // 비디오: 실제 재생 시작 시 VideoView 표시 (이전 프레임 깜빡임 방지)
-  useEffect(() => {
-    if (!player) return;
-    const sub = player.addListener("playingChange", ({ isPlaying: playing }) => {
-      if (playing) {
-        setVideoReadyPage(currentPageRef.current);
-      }
-    });
-    return () => sub.remove();
-  }, [player]);
+  }, [player, tryAutoAdvance]);
 
   // 비디오 재생 완료 감지 (최대 2회 재생)
   useEffect(() => {
@@ -203,22 +213,17 @@ export default function ViewerScreen() {
     if (currentPageData.mediaType === "video" && currentPageData.videoUrl) {
       videoFirstPlayDoneRef.current = false;
       videoPlayCountRef.current = 0;
-      setVideoReadyPage(-1);
-      player.loop = false;
-      player.muted = true;
-      player.replace(currentPageData.videoUrl);
-      // play()는 statusChange 리스너에서 readyToPlay 시 호출
+      setVideoVisible(false);
 
-      // Web 폴백: replace() 후 statusChange 미발생 시 직접 play 시도
-      // 무음 비디오는 autoplay 제한 없으므로 setTimeout 사용 가능
-      if (Platform.OS === "web") {
-        videoRetryTimer.current = setTimeout(() => {
-          if (!videoFirstPlayDoneRef.current) {
-            player.currentTime = 0;
-            Promise.resolve().then(() => player.play()).catch(() => {});
-          }
-        }, 800);
-      }
+      // TTS가 미디어 세션을 확보한 뒤 비디오 로드 (순서: BGM → TTS → Video)
+      // TTS play()가 ~50ms면 resolve되므로 500ms면 충분
+      const videoUrl = currentPageData.videoUrl;
+      videoLoadTimer.current = setTimeout(() => {
+        pendingVideoUrl.current = videoUrl;
+        player.loop = false;
+        player.muted = true;
+        player.replace(videoUrl);
+      }, 500);
 
       // 10초 폴백: playToEnd 미발생 시 자동 진행
       videoFallbackTimer.current = setTimeout(() => {
@@ -229,8 +234,9 @@ export default function ViewerScreen() {
       }, 10000);
     } else {
       videoFirstPlayDoneRef.current = true;
-      // 플레이어 건드리지 않음 — pause/replace(null) 후 다음 replace(url) 시
-      // 웹에서 statusChange 미발생 버그 방지. 이전 비디오는 무음+비가시 상태로 자연 소멸.
+      setVideoVisible(false);
+      pendingVideoUrl.current = null;
+      player.pause(); // 비-비디오 페이지에서만 정지
     }
 
     return clearVideoTimers;
@@ -330,7 +336,7 @@ export default function ViewerScreen() {
     // 이전 TTS 정리 (웹: HTMLAudioElement 정지, 네이티브: expo-av unload)
     const webAudio = Platform.OS === "web" ? getWebTtsAudio() : null;
     if (webAudio) {
-      webAudio.pause();
+      await safePauseWebTts();
       webAudio.onended = null;
       webAudio.onerror = null;
     }
@@ -363,6 +369,7 @@ export default function ViewerScreen() {
 
       webAudio.onended = () => {
         if (ttsAbortRef.current !== generation) return;
+        markWebTtsDone(); // _shouldBePlaying = false → tryAutoAdvance 허용
         setIsPlaying(false);
         ttsFinishedRef.current = true;
         tryAutoAdvance();
@@ -370,18 +377,19 @@ export default function ViewerScreen() {
 
       webAudio.onerror = () => {
         if (ttsAbortRef.current !== generation) return;
+        markWebTtsDone();
         ttsFinishedRef.current = true;
         tryAutoAdvance();
       };
 
       try {
-        await webAudio.play();
+        await trackedPlay(webAudio);
         if (ttsAbortRef.current !== generation) {
           webAudio.pause();
           return;
         }
         setIsPlaying(true);
-      } catch (err) {
+      } catch {
         if (ttsAbortRef.current !== generation) return;
         ttsFinishedRef.current = true;
         tryAutoAdvance();
@@ -555,10 +563,10 @@ export default function ViewerScreen() {
     const webAudio = Platform.OS === "web" ? getWebTtsAudio() : null;
     if (webAudio && webAudio.src) {
       if (!webAudio.paused) {
-        webAudio.pause();
+        await safePauseWebTts(); // _shouldBePlaying = false → 자동 resume 방지
         setIsPlaying(false);
       } else {
-        webAudio.play().catch(() => {});
+        await trackedPlay(webAudio); // _shouldBePlaying = true
         setIsPlaying(true);
       }
     } else if (ttsRef.current) {
@@ -672,7 +680,7 @@ export default function ViewerScreen() {
                     left: 0,
                     width: "100%",
                     height: "100%",
-                    opacity: videoReadyPage === currentPage ? 1 : 0,
+                    opacity: videoVisible ? 1 : 0,
                   }}
                   contentFit="cover"
                   nativeControls={false}
