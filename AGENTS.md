@@ -112,13 +112,27 @@ npm run dev:android  # Android
 npm run dev:ios      # iOS
 npm run build        # export build
 npm run ts:check     # TypeScript check
+npm run lint         # TS check + JS config lint
 ```
+
+## Quality Checks
+- `npm run ts:check` is the primary static gate for app code (`.ts/.tsx`).
+- `npm run lint` validates TypeScript first, then lints JS config files via `eslint.config.js`.
+- In restricted/offline environments, `npm outdated` and `expo-doctor` can fail due registry access limits.
 
 ## Conventions
 - One component per file; use `export function` (pages use default export).
 - Prefer NativeWind classes over inline styles.
 - Use TanStack Query for server state, Zustand for client state.
 - Add accessibility props where relevant.
+
+## Viewer Maintainability
+- Story viewer UI is split into reusable components under `src/components/story/`:
+  - `ViewerTopBar`, `ViewerMainContent`, `ViewerControlBars`, `ViewerSettingsModal`
+- Keep `app/story/[id]/viewer.tsx` focused on playback/state logic and route lifecycle.
+
+## Dependency Hygiene
+- Periodically verify low/unknown-use packages (`ajv`, `expo-constants`) before keeping them long-term.
 
 ## Local Commands/Skills (.claude)
 Commands:
