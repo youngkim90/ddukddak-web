@@ -3,31 +3,22 @@ import {
   View,
   Text,
   Pressable,
-  Modal,
-  ScrollView,
   BackHandler,
   Platform,
   GestureResponderEvent,
 } from "react-native";
-import { VolumeSlider } from "@/components/ui/VolumeSlider";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { Image } from "expo-image";
 import { StatusBar } from "expo-status-bar";
-import {
-  X,
-  Settings,
-  SkipBack,
-  SkipForward,
-  Play,
-  Pause,
-  Volume2,
-  Music,
-} from "lucide-react-native";
-import { useVideoPlayer, VideoView } from "expo-video";
+import { useVideoPlayer } from "expo-video";
 import { Audio } from "expo-av";
 import { useStory, useStoryPages } from "@/hooks/useStories";
 import { useProgress, useSaveProgress } from "@/hooks/useProgress";
-import { getOptimizedImageUrl } from "@/lib/utils";
+import {
+  ViewerControlBars,
+  ViewerMainContent,
+  ViewerSettingsModal,
+  ViewerTopBar,
+} from "@/components/story";
 import { getWebTtsAudio, cleanupWebTts, safePauseWebTts, trackedPlay, isWebTtsActive, markWebTtsDone, resumeWebTts } from "@/lib/webTts";
 
 export default function ViewerScreen() {
@@ -637,232 +628,43 @@ export default function ViewerScreen() {
   return (
     <View className="flex-1 bg-[#1A1A2E]">
       <StatusBar hidden />
+      <ViewerTopBar onClose={handleClose} onOpenSettings={() => setShowSettings(true)} />
 
-      {/* Top Bar */}
-      <View className="flex-row items-center justify-between bg-black/20 px-4 py-2 pt-4">
-        <Pressable
-          onPress={handleClose}
-          className="h-10 w-10 items-center justify-center rounded-full bg-white/10"
-          accessibilityLabel="닫기"
-        >
-          <X size={24} color="#FFFFFFD9" />
-        </Pressable>
-        <Pressable
-          onPress={() => setShowSettings(true)}
-          className="h-10 w-10 items-center justify-center rounded-full bg-white/10"
-          accessibilityLabel="설정"
-        >
-          <Settings size={24} color="#FFFFFFD9" />
-        </Pressable>
-      </View>
-
-      {/* Main Content with Swipe */}
-      <View
-        className="flex-1 justify-center"
+      <ViewerMainContent
+        page={page}
+        language={language}
+        videoVisible={videoVisible}
+        player={player}
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
-      >
-        {/* Media Area */}
-        <View className="items-center" style={{ paddingHorizontal: "2%" }}>
-          {page.imageUrl ? (
-            <View className="w-full aspect-[3/2] rounded-xl overflow-hidden">
-              <Image
-                source={{ uri: getOptimizedImageUrl(page.imageUrl, 800) }}
-                style={{ width: "100%", height: "100%" }}
-                contentFit="cover"
-              />
-              {page.mediaType === "video" && page.videoUrl && (
-                <VideoView
-                  player={player}
-                  style={{
-                    position: "absolute",
-                    top: 0,
-                    left: 0,
-                    width: "100%",
-                    height: "100%",
-                    opacity: videoVisible ? 1 : 0,
-                  }}
-                  contentFit="cover"
-                  nativeControls={false}
-                  playsInline={true}
-                  allowsFullscreen={false}
-                />
-              )}
-            </View>
-          ) : (
-            <View className="w-full aspect-[3/2] rounded-xl bg-[#2A2A3E]" />
-          )}
-        </View>
+      />
 
-        {/* Text Area — 고정 높이, 미디어 위치 불변 */}
-        <View className="px-6 pt-3" style={{ height: 160 }}>
-          <ScrollView
-            className="flex-1 rounded-xl bg-white/10 px-5 py-4"
-            showsVerticalScrollIndicator={false}
-          >
-            <Text
-              className="text-center leading-8 text-white"
-              style={{ fontFamily: "GowunDodum", fontSize: 20, fontWeight: "bold" }}
-            >
-              {language === "ko" ? page.textKo : page.textEn}
-            </Text>
-          </ScrollView>
-        </View>
-      </View>
+      <ViewerControlBars
+        currentPage={currentPage}
+        totalPages={totalPages}
+        progressPercent={progressPercent}
+        isPlaying={isPlaying}
+        language={language}
+        ttsEnabled={ttsEnabled}
+        bgmEnabled={bgmEnabled}
+        onPrevious={handlePrevious}
+        onPlayPause={togglePlayPause}
+        onNext={handleNext}
+        onToggleLanguage={() => setLanguage((prev) => (prev === "ko" ? "en" : "ko"))}
+        onToggleTts={() => setTtsEnabled((prev) => !prev)}
+        onToggleBgm={() => setBgmEnabled((prev) => !prev)}
+      />
 
-      {/* Playback Controls */}
-      <View className="flex-row items-center justify-center gap-6 bg-black/20 py-4">
-        <Pressable
-          onPress={handlePrevious}
-          disabled={currentPage === 0}
-          className={`h-12 w-12 items-center justify-center rounded-full bg-white/10 ${
-            currentPage === 0 ? "opacity-30" : ""
-          }`}
-          accessibilityLabel="이전"
-        >
-          <SkipBack size={24} color="#FFFFFFD9" />
-        </Pressable>
-        <Pressable
-          onPress={togglePlayPause}
-          className="h-16 w-16 items-center justify-center rounded-full bg-primary/85"
-          accessibilityLabel={isPlaying ? "일시정지" : "재생"}
-        >
-          {isPlaying ? (
-            <Pause size={32} color="#FFFFFFD9" />
-          ) : (
-            <Play size={32} color="#FFFFFFD9" style={{ marginLeft: 4 }} />
-          )}
-        </Pressable>
-        <Pressable
-          onPress={handleNext}
-          className="h-12 w-12 items-center justify-center rounded-full bg-white/10"
-          accessibilityLabel="다음"
-        >
-          <SkipForward size={24} color="#FFFFFFD9" />
-        </Pressable>
-      </View>
-
-      {/* Progress Bar */}
-      <View className="bg-black/20 px-6 pb-2">
-        <View className="h-1 overflow-hidden rounded-full bg-white/20">
-          <View
-            className="h-full bg-primary/85"
-            style={{ width: `${progressPercent}%` }}
-          />
-        </View>
-        <Text className="mt-2 text-center text-sm text-white/50">
-          {currentPage + 1} / {totalPages}
-        </Text>
-      </View>
-
-      {/* Bottom Controls */}
-      <View className="flex-row items-center justify-center gap-3 bg-black/20 px-6 pb-6 pt-2">
-        <Pressable
-          onPress={() => setLanguage((prev) => (prev === "ko" ? "en" : "ko"))}
-          className="rounded-full bg-white/10 px-4 py-2"
-          accessibilityState={{ selected: language === "ko" }}
-        >
-          <Text className="text-sm text-white/85">
-            {language === "ko" ? "한국어" : "ENG"}
-          </Text>
-        </Pressable>
-        <Pressable
-          onPress={() => setTtsEnabled((prev) => !prev)}
-          className={`flex-row items-center gap-2 rounded-full px-4 py-2 ${
-            ttsEnabled ? "bg-primary/85" : "bg-white/10"
-          }`}
-          accessibilityRole="switch"
-          accessibilityState={{ checked: ttsEnabled }}
-        >
-          <Volume2 size={16} color={ttsEnabled ? "#FFFFFFD9" : "#FFFFFF80"} />
-          <Text className={`text-sm ${ttsEnabled ? "text-white/85" : "text-white/50"}`}>
-            TTS
-          </Text>
-        </Pressable>
-        <Pressable
-          onPress={() => setBgmEnabled((prev) => !prev)}
-          className={`flex-row items-center gap-2 rounded-full px-4 py-2 ${
-            bgmEnabled ? "bg-primary/85" : "bg-white/10"
-          }`}
-          accessibilityRole="switch"
-          accessibilityState={{ checked: bgmEnabled }}
-        >
-          <Music size={16} color={bgmEnabled ? "#FFFFFFD9" : "#FFFFFF80"} />
-          <Text className={`text-sm ${bgmEnabled ? "text-white/85" : "text-white/50"}`}>
-            BGM
-          </Text>
-        </Pressable>
-      </View>
-
-      {/* Settings Modal */}
-      <Modal
+      <ViewerSettingsModal
         visible={showSettings}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowSettings(false)}
-      >
-        <Pressable
-          className="flex-1 items-center justify-center bg-black/50"
-          onPress={() => setShowSettings(false)}
-        >
-          <Pressable
-            className="mx-4 w-full max-w-sm rounded-2xl bg-white p-6"
-            onPress={(e) => e.stopPropagation()}
-          >
-            <Text className="mb-4 text-lg font-bold text-text-main">설정</Text>
-
-            {/* TTS Volume */}
-            <View className="mb-4">
-              <Text className="mb-2 text-sm text-text-sub">TTS 볼륨</Text>
-              <VolumeSlider
-                value={ttsVolume}
-                onValueChange={setTtsVolume}
-                minimumValue={0}
-                maximumValue={100}
-              />
-            </View>
-
-            {/* BGM Volume */}
-            <View className="mb-4">
-              <Text className="mb-2 text-sm text-text-sub">BGM 볼륨</Text>
-              <VolumeSlider
-                value={bgmVolume}
-                onValueChange={setBgmVolume}
-                minimumValue={0}
-                maximumValue={100}
-              />
-            </View>
-
-            {/* Auto Play Toggle */}
-            <View className="flex-row items-center justify-between py-3 border-b border-[#F0F0F0]">
-              <Text className="text-sm text-text-sub">자동 넘김</Text>
-              <Pressable
-                onPress={() => setAutoPlayEnabled((prev) => !prev)}
-                className={`h-6 w-11 rounded-full p-0.5 ${
-                  autoPlayEnabled ? "bg-primary" : "bg-[#D9D9D9]"
-                }`}
-                accessibilityRole="switch"
-                accessibilityState={{ checked: autoPlayEnabled }}
-                accessibilityLabel="자동 넘김 토글"
-              >
-                <View
-                  className="h-5 w-5 rounded-full bg-white"
-                  style={{
-                    alignSelf: autoPlayEnabled ? "flex-end" : "flex-start",
-                  }}
-                />
-              </Pressable>
-            </View>
-
-            <Pressable
-              onPress={() => setShowSettings(false)}
-              className="mt-6 items-center rounded-xl bg-primary py-3"
-            >
-              <Text className="font-bold text-white">닫기</Text>
-            </Pressable>
-          </Pressable>
-        </Pressable>
-      </Modal>
+        ttsVolume={ttsVolume}
+        bgmVolume={bgmVolume}
+        autoPlayEnabled={autoPlayEnabled}
+        onClose={() => setShowSettings(false)}
+        onTtsVolumeChange={setTtsVolume}
+        onBgmVolumeChange={setBgmVolume}
+        onToggleAutoPlay={() => setAutoPlayEnabled((prev) => !prev)}
+      />
     </View>
   );
 }
