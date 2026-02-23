@@ -383,7 +383,9 @@ https://ddukddak-api-2lb4yqjazq-du.a.run.app/api
 
 ---
 
-## Claude Code Commands
+## Claude Code Commands & Skills
+
+### Commands
 
 | 커맨드 | 용도 |
 |--------|------|
@@ -397,6 +399,27 @@ https://ddukddak-api-2lb4yqjazq-du.a.run.app/api
 | `/dd-work [all]` | 논의된 작업 실행 (all: 커밋+PR 포함) |
 | `/dd-brainstorm` | 브레인스토밍 |
 | `/dd-work-order [all]` | 작업지시서 읽기 + 구현 + 보고서 작성 |
+
+### Skills
+
+| 스킬 | 용도 |
+|------|------|
+| `expo-best-practices` | Expo Router/모바일 의사결정 시 우선 참조 |
+| `react-best-practices` | React 성능/코드 품질 (웹 전용 규칙은 선별 적용) |
+| `web-design-guidelines` | 웹 UI 접근성/디자인 감사 |
+| `component` | 컴포넌트 스캐폴딩 컨벤션 |
+
+### 커맨드 활용 가이드
+
+- **작업 실행**: `dd-work` (논의 기반) / `dd-work-order` (작업지시서 기반)
+- **PR 전 검증**: `dd-build`, `dd-expo-check`
+- **커밋/PR**: `dd-commit`, `dd-pr`
+- **보안 점검**: `dd-security-check`
+
+### 커맨드 호출 규칙
+
+- 사용자가 커맨드명(예: `dd-commit`)을 말하면 `.claude/commands/dd-commit.md`를 읽고 해당 워크플로우를 **그대로** 실행
+- 인자가 있으면(예: `dd-work all`) 커맨드 파일에 정의된 인자 의미를 적용
 
 ---
 
