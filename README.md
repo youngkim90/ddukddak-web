@@ -10,7 +10,8 @@
 
 - 연령별 맞춤 동화 추천 (카테고리: 전래, 교훈, 모험, 가정, 창의)
 - 동화 뷰어 (AI 이미지/영상 + 자막, 스와이프, 자동 넘기기, 진행률 저장)
-- AI 영상 재생 (핵심 장면 2~3초 무음 MP4 루프, 이미지 폴백)
+- AI 영상 재생 (핵심 장면 2~3초 무음 MP4, 이미지 폴백)
+- TTS 나레이션 (웹: Web Speech API)
 - BGM 재생 (동화별 30초 루프 MP3, 볼륨 조절)
 - 다국어 지원 (한국어 / 영어 전환)
 - 소셜 로그인 (Google, Kakao OAuth)
@@ -49,8 +50,8 @@ npm run dev:web
 npm run dev:android
 npm run dev:ios
 
-# TypeScript 검사
-npm run ts:check
+# TypeScript + ESLint 검사
+npm run lint
 ```
 
 ### 환경 변수
@@ -85,9 +86,10 @@ app/                            # Expo Router (파일 기반 라우팅)
 src/
 ├── components/
 │   ├── ui/                     # Button, Card, Input, Skeleton 등
-│   └── layout/                 # Header, HomeHeader, PageIndicator
+│   ├── layout/                 # Header, HomeHeader, PageIndicator
+│   └── story/                  # ViewerTopBar, ViewerMainContent 등
 ├── hooks/                      # useAuth, useStories, useProgress 등
-├── lib/                        # api, supabase, constants, utils
+├── lib/                        # api, supabase, constants, utils, webTts
 ├── providers/                  # QueryProvider, AuthProvider
 ├── stores/                     # authStore (Zustand + AsyncStorage)
 └── types/                      # TypeScript 타입 정의
@@ -104,7 +106,7 @@ src/
 | `/(tabs)/home` | 홈 (배너 + 카테고리별 동화) |
 | `/(tabs)/stories` | 동화 목록 (카테고리/연령 필터) |
 | `/story/[id]` | 동화 상세 (한/영 전환) |
-| `/story/[id]/viewer` | 동화 뷰어 (AI 영상/이미지, BGM, 스와이프) |
+| `/story/[id]/viewer` | 동화 뷰어 (AI 영상/이미지, TTS, BGM, 스와이프) |
 | `/subscription` | 구독 안내 (현재 무료 모드) |
 | `/payment` | 결제 (현재 비활성화) |
 | `/(tabs)/settings` | 설정 |
@@ -149,7 +151,7 @@ eas build --platform android --profile production
 - [x] 무료 모드 UI (FREE_MODE 플래그)
 - [x] AI 영상 뷰어 (expo-video 오버레이 패턴)
 - [x] BGM 오디오 재생 (expo-av, 볼륨 조절)
-- [ ] TTS 나레이션 재생
+- [x] TTS 나레이션 (웹: Web Speech API)
 - [ ] 결제 연동 (인앱결제 RevenueCat + 토스 웹)
 - [ ] Google Play 출시
 
