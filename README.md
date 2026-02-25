@@ -11,7 +11,7 @@
 - 연령별 맞춤 동화 추천 (카테고리: 전래, 교훈, 모험, 가정, 창의)
 - 동화 뷰어 (AI 이미지/영상 + 자막, 스와이프, 자동 넘기기, 진행률 저장)
 - AI 영상 재생 (핵심 장면 2~3초 무음 MP4, 이미지 폴백)
-- TTS 나레이션 (웹: Web Speech API)
+- TTS 나레이션 (문장 단위 순차 재생 + 하이라이트, 페이지 단위 폴백)
 - BGM 재생 (동화별 30초 루프 MP3, 볼륨 조절)
 - 다국어 지원 (한국어 / 영어 전환)
 - 소셜 로그인 (Google, Kakao OAuth)
@@ -151,7 +151,7 @@ eas build --platform android --profile production
 - [x] 무료 모드 UI (FREE_MODE 플래그)
 - [x] AI 영상 뷰어 (expo-video 오버레이 패턴)
 - [x] BGM 오디오 재생 (expo-av, 볼륨 조절)
-- [x] TTS 나레이션 (웹: Web Speech API)
+- [x] TTS 나레이션 (문장 단위 재생 + 하이라이트)
 - [ ] 결제 연동 (인앱결제 RevenueCat + 토스 웹)
 - [ ] Google Play 출시
 
