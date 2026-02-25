@@ -343,8 +343,14 @@ export default function ViewerScreen() {
     const currentPageData = pages[currentPage];
     if (currentPageData?.sentences?.length > 0 &&
         currentPageData.sentences.some((s) => language === "ko" ? s.audioUrlKo : s.audioUrlEn)) {
-      // 문장 모드: ttsFinishedRef는 훅의 onAllComplete에서 설정
-      ttsFinishedRef.current = false;
+      if (!ttsEnabled) {
+        // TTS 비활성 시 즉시 완료 처리 → 비디오 auto-advance 차단 방지
+        ttsFinishedRef.current = true;
+        tryAutoAdvance();
+      } else {
+        // 문장 모드: ttsFinishedRef는 훅의 onAllComplete에서 설정
+        ttsFinishedRef.current = false;
+      }
       return;
     }
 

@@ -248,6 +248,12 @@ export function useSentenceTts({
         : null;
       if (nextAudioUrl) {
         const nextRef = activeSlotRef.current === "A" ? soundARef : soundBRef;
+        // 기존 프리로드 Sound 정리 (덮어쓰기 누수 방지)
+        if (nextRef.current) {
+          nextRef.current.setOnPlaybackStatusUpdate(null);
+          nextRef.current.unloadAsync().catch(() => {});
+          nextRef.current = null;
+        }
         try {
           const { sound: preloadSound } = await Audio.Sound.createAsync(
             { uri: nextAudioUrl },
