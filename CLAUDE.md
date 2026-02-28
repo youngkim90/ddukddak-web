@@ -314,17 +314,37 @@ npx expo export --platform web && eas deploy --prod # Web 배포
 ### 뷰어 구조
 
 - `app/story/[id]/viewer.tsx` — 상태 관리 + 재생 로직 (TTS, BGM, 비디오, auto-advance)
+- `src/hooks/useSentenceTts.ts` — 문장 단위 TTS 큐 재생 훅 (웹 + 네이티브)
 - `src/components/story/` — 순수 UI 컴포넌트 (props-only, 상태 없음)
 - 웹 미디어 세션 충돌 대응: `src/lib/webTts.ts` (단일 HTMLAudioElement 재사용 + 의도 기반 상태 추적)
+
+### TTS 재생 모드
+
+| 모드 | 조건 | 동작 |
+|------|------|------|
+| 문장 단위 | `sentences.length > 0` + audioUrl 있음 | 문장별 순차 재생 + 하이라이트 |
+| 페이지 단위 (폴백) | sentences 비어있음 | 기존 `audioUrlKo/En` 단일 재생 |
+
+- 웹: HTMLAudioElement `src` 교체 방식 (iOS Safari 제스처 정책 대응됨)
+- 네이티브: expo-av `Audio.Sound` double-buffering (2개 교대 + 프리로드)
+- 문장 간 대기: 400ms (`SENTENCE_GAP_MS`)
 
 ### StoryPage 미디어 필드
 
 ```typescript
+interface Sentence {
+  sentenceIndex: number;         // 0-based, 정렬 보장
+  textKo?: string;
+  textEn?: string;
+  audioUrlKo?: string;
+  audioUrlEn?: string;
+}
+
 interface StoryPage {
   imageUrl: string;              // 항상 존재 (이미지 or 비디오 포스터)
   mediaType?: "image" | "video"; // 없으면 "image" 기본
   videoUrl?: string;             // mediaType === "video"일 때만
-  lottieUrl?: string;            // 하위 호환용 (사용하지 않음)
+  sentences: Sentence[];         // 항상 배열 (빈 배열 → 페이지 단위 폴백)
 }
 ```
 
@@ -347,4 +367,4 @@ interface StoryPage {
 
 ---
 
-*마지막 업데이트: 2026-02-23*
+*마지막 업데이트: 2026-02-25 (문장 단위 TTS 구현)*

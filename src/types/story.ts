@@ -19,6 +19,14 @@ export interface Story {
   createdAt: string;
 }
 
+export interface Sentence {
+  sentenceIndex: number;
+  textKo?: string;
+  textEn?: string;
+  audioUrlKo?: string;
+  audioUrlEn?: string;
+}
+
 export interface StoryPage {
   id: string;
   pageNumber: number;
@@ -29,6 +37,7 @@ export interface StoryPage {
   audioUrlEn?: string;
   mediaType?: "image" | "video";
   videoUrl?: string;
+  sentences: Sentence[];
 }
 
 export interface StoryPagesResponse {

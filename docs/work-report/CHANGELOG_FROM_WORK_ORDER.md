@@ -1,143 +1,55 @@
 # 프론트엔드 작업 보고서
 
-> 작업지시서: `WORK_ORDER_PRONG.md` v9 (2026-02-08) 기준
+> 작업지시서: `WORK_ORDER_PRONG.md` v11 (2026-02-23) 기준
 > 작업자: 프롱 (프론트엔드)
-> 보고일: 2026-02-09
-> PR: #15
+> 보고일: 2026-02-25
+> PR: 커밋 후 생성 예정
 
 ---
 
-## 1. 탭바 텍스트 잘림 수정 (P1)
+## 1. 문장 단위 TTS 재생 구현
 
 ### 상태: 완료
 
-PR #14에서 80→60px로 줄인 영향으로 GowunDodum 한글 글리프가 `overflow: hidden`에 의해 잘리는 문제.
+코난 API 스펙(`Sentence` 인터페이스) 수신 후 구현 완료.
 
 | 항목 | 요청 사항 | 결과 | 비고 |
 |------|----------|------|------|
-| 탭바 높이 | 64~68px | **64px** | 컴팩트 유지 |
-| paddingBottom | 조정 | **10px** | 라벨 하단 여유 확보 |
-| paddingTop | 유지 | **6px** | - |
-| 라벨 overflow | 잘림 해결 | `overflow: "visible"` | 근본 원인 해결 |
+| `useSentenceTts` 훅 분리 | 문장 큐 재생 로직 | ✅ 신규 파일 | 세대 카운터 경쟁 상태 방어 포함 |
+| 문장 하이라이트 UI | 현재/완료/미재생 구분 | ✅ 구현 | 현재 문장 자동 스크롤 포함 |
+| 페이지 단위 폴백 | sentences 비어있을 때 | ✅ 구현 | `isSentenceMode` 플래그로 분기 |
+| 웹 재생 | HTMLAudioElement src 교체 | ✅ 구현 | 기존 webTts 패턴 확장 |
+| 앱 재생 | expo-av double-buffering | ✅ 구현 | Sound 2개 교대 + 프리로드 |
+| 언어 전환 | 동일 인덱스 유지 | ✅ 구현 | 코난 API가 한/영 단일 배열 → 매핑 문제 없음 |
 
 ### 설계 결정
-- GowunDodum 한글 글리프가 Expo 탭바 내부 `overflow: hidden` 컨테이너(11px)에서 잘림. `overflow: "visible"` 직접 지정으로 라벨 높이 11px → 16px 확보. 높이를 무작정 키우지 않고 근본 원인 해결.
+
+1. **코난 API 방식 채택**: v10 보고서에서 `sentencesKo[]`/`sentencesEn[]` 분리를 제안했으나, 코난이 단일 `sentences[]` 배열(각 항목에 ko/en 포함)로 구현 → 언어 인덱스 매핑 문제가 자동 해결되어 더 나은 구조
+2. **viewer.tsx 최소 변경**: 기존 TTS 로직(playTts, ttsEnabled 토글, 볼륨 등)을 유지하고, 문장 모드일 때만 `useSentenceTts` 훅에 위임. `isSentenceMode` 플래그로 분기하여 기존 코드 영향 최소화
+3. **문장 간 대기**: 400ms 설정 (SENTENCE_GAP_MS). 잡스 확정 후 조정 가능
+4. **오디오 없는 문장**: audioUrl이 없는 문장은 자동 skip → 다음 문장으로 진행
 
 ---
 
-## 2. UI 폰트 Gowun Dodum 적용 (P1)
+## 2. Sentry 에러 모니터링
 
-### 상태: 완료
+### 상태: 제외 (사용자 지시)
 
-Pretendard(비즈니스) → GowunDodum(부드럽고 따뜻한) 폰트로 전체 UI 변경.
-
-| 항목 | 요청 사항 | 결과 | 비고 |
-|------|----------|------|------|
-| tailwind 기본 폰트 | GowunDodum | `fontFamily.sans: ["GowunDodum"]` | 모든 텍스트에 자동 적용 |
-| 탭바 라벨 | GowunDodum | `fontFamily: "GowunDodum"` | 직접 지정 (시스템 기본 폰트 우회) |
-| 동화 뷰어 자막 | 유지 | `fontFamily: "GowunDodum"` (기존) | 변경 없음 |
-
-### 설계 결정
-- `tailwind.config.ts`에서 `fontFamily.sans`를 `["GowunDodum"]`으로 설정하여 NativeWind의 기본 폰트를 일괄 변경. Pretendard는 `font-pretendard` 클래스로 필요 시 개별 사용 가능.
-- GowunDodum은 Bold 웨이트가 없는 단일 웨이트 폰트이므로, `fontWeight: "bold"` 적용 시 시스템이 합성 볼드 처리함.
-
----
-
-## 3. 동화 목록 썸네일 3:2 비율 (P1)
-
-### 상태: 완료
-
-동화 탭(S-06) 썸네일 비율 조정. 잡스 피드백으로 1:1 대신 3:2로 최종 결정.
-
-| 항목 | 요청 사항 | 결과 | 비고 |
-|------|----------|------|------|
-| 목록 썸네일 | 4:5 → 3:2 | `aspect-[3/2]` | 가로형 crop, `contentFit="cover"` |
-| 뷰어 이미지 | 유지 | 3:2 (변경 없음) | - |
-| 홈 배너/카드 | 기존 유지 | 변경 없음 | - |
-
----
-
-## 4. 교훈(lesson) 카테고리 제거 (P1)
-
-### 상태: 완료
-
-"교훈" 카테고리 독립성 부족 → 제거. 4개 카테고리로 축소.
-
-| 항목 | 요청 사항 | 결과 | 비고 |
-|------|----------|------|------|
-| CATEGORY_OPTIONS | "교훈" 제거 | 필터에서 제거 | `constants.ts` |
-| 홈 카테고리 섹션 | "교훈 동화" 제거 | `lesson` 섹션 제거 | `home.tsx` |
-| CATEGORY_EMOJIS | "교훈" 제거 | 이모지 매핑 제거 | `home.tsx` |
-| StoryCategory 타입 | 유지 | `"lesson"` 유지 | 백엔드 호환 |
-| CATEGORY_LABELS 등 | 유지 | 유지 | 기존 데이터 표시용 |
-
-### 설계 결정
-- 타입과 매핑 상수는 유지 (백엔드에 아직 `lesson` 카테고리 데이터 존재). UI 필터와 홈 섹션에서만 제거.
-
----
-
-## 5. 뷰어 컨트롤 반투명 + 색상 톤다운 (P2)
-
-### 상태: 완료
-
-동화 감상 몰입도 향상을 위한 반투명 처리 + 아이콘/텍스트 색상 톤다운.
-
-| 항목 | 요청 사항 | 결과 | 비고 |
-|------|----------|------|------|
-| 상단 바 (닫기/설정) | 반투명 | `bg-black/20`, 아이콘 `#FFFFFFD9` (85%) | 영역 + 아이콘 톤다운 |
-| 재생 컨트롤 영역 | 반투명 | `bg-black/20` | 80% 투명도 |
-| 재생/이전/다음 버튼 | 색상 완화 | `bg-primary/85`, 아이콘 `#FFFFFFD9` | 15% 투명도 + 아이콘 85% |
-| 프로그레스 바 | 반투명 + 톤다운 | `bg-primary/85`, 카운터 `text-white/50` | |
-| 하단 버튼 (언어/TTS/BGM) | 반투명 + 톤다운 | `bg-primary/85`, 텍스트 `text-white/85` | 활성 시 85% 흰색 |
-
----
-
-## 6. 모바일 폰트 크기 반응형 (추가)
-
-### 상태: 완료
-
-모바일(< 768px)에서 텍스트가 크게 보이는 문제. NativeWind 반응형 클래스로 해결.
-
-| 요소 | 모바일 | 태블릿/웹 (≥768px) |
-|------|--------|-------------------|
-| 헤더 "뚝딱동화" | `text-base` (16px) | `md:text-lg` (18px) |
-| 배너 제목 | `text-lg` (18px) | `md:text-xl` (20px) |
-| 카테고리 제목 | `text-base` (16px) | `md:text-lg` (18px) |
-| 동화 상세 제목 | `text-xl` (20px) | `md:text-2xl` (24px) |
-| 동화 상세 설명 | `text-sm` (14px) | `md:text-base` (16px) |
-
----
-
-## 7. Google Play 출시 (P0)
-
-### 상태: 대기 (잡스 블로커)
-
-| 항목 | 상태 | 담당 |
-|------|------|------|
-| 앱 아이콘 (512x512) | ⏳ 대기 | 잡스 |
-| Feature Graphic (1024x500) | ⏳ 대기 | 잡스 |
-| 개발자 계정 + 서비스 계정 키 | ⏳ 대기 | 잡스 |
-
----
-
-## 8. 개인정보/이용약관 URL 교체
-
-### 상태: 대기 (잡스 전달 대기)
-
-잡스가 실제 URL 전달하면 `app/(tabs)/settings/index.tsx` 상수 교체 예정.
+Sentry 미도입 상태이므로 이번 작업에서 제외.
 
 ---
 
 ## 코난에게 전달 사항
 
-- **교훈 카테고리 재분류**: 캉테가 스토리 JSON에서 `lesson` → `folktale` 변경 완료 후 재시드 필요
-- 재시드 완료 후 프론트에서 `StoryCategory` 타입에서 `"lesson"` 제거 가능
+1. **프론트 연동 완료**: `Sentence` 인터페이스 기반 타입 정의 + 재생 로직 구현됨
+2. **테스트 데이터 필요**: 현재 01~03번 동화는 `sentences: []` → 문장 모드 동작 검증 불가. 캉테 04번 데이터 준비되면 연동 테스트 예정
+3. **하위 호환 정상**: sentences 빈 배열일 때 기존 페이지 단위 재생 폴백 확인됨
 
 ## 잡스에게 요청 사항
 
-1. **Google Play 블로커 해소**: 앱 아이콘, Feature Graphic, 개발자 계정 키 전달
-2. **개인정보/이용약관 URL 전달**: 실제 URL 확정 시 즉시 교체 가능
-3. **GowunDodum Bold 없음 확인**: Bold 웨이트가 없어 시스템 합성 볼드 사용 중. 가독성 문제 있으면 피드백 필요
+1. **문장 하이라이트 디자인 확정**: 현재 임시 스타일 적용 (현재 문장: 흰색+배경, 완료: 50% 투명, 미재생: 35% 투명). Figma 정식 디자인 필요
+2. **문장 간 대기 시간**: 현재 400ms 설정. 확정 필요
+3. **Google Play 블로커**: 앱 아이콘, Feature Graphic, 개발자 계정 키 전달
 
 ---
 
@@ -145,11 +57,7 @@ Pretendard(비즈니스) → GowunDodum(부드럽고 따뜻한) 폰트로 전체
 
 | 파일 | 변경 |
 |------|------|
-| `app/(tabs)/_layout.tsx` | 탭바 높이 64px, 폰트 GowunDodum, `overflow: "visible"` |
-| `tailwind.config.ts` | 기본 폰트 `sans: ["GowunDodum"]` |
-| `src/components/ui/StoryCard.tsx` | 썸네일 `aspect-[4/5]` → `aspect-[3/2]` |
-| `src/lib/constants.ts` | CATEGORY_OPTIONS에서 교훈 제거 |
-| `app/(tabs)/home.tsx` | 교훈 섹션 제거, 반응형 폰트 크기 |
-| `src/components/layout/HomeHeader.tsx` | 반응형 폰트 크기 |
-| `app/story/[id].tsx` | 반응형 폰트 크기 |
-| `app/story/[id]/viewer.tsx` | 컨트롤 반투명 + 아이콘/텍스트 85% 톤다운 |
+| `src/types/story.ts` | `Sentence` 인터페이스 추가, `StoryPage.sentences` 필드 추가 |
+| `src/hooks/useSentenceTts.ts` | 신규 — 문장 큐 재생 훅 (웹 + 네이티브) |
+| `src/components/story/ViewerMainContent.tsx` | 문장 하이라이트 렌더링 + 자동 스크롤 |
+| `app/story/[id]/viewer.tsx` | useSentenceTts 통합, 문장/레거시 모드 분기 |

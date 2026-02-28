@@ -20,6 +20,7 @@ import {
   ViewerTopBar,
 } from "@/components/story";
 import { getWebTtsAudio, cleanupWebTts, safePauseWebTts, trackedPlay, isWebTtsActive, markWebTtsDone, resumeWebTts } from "@/lib/webTts";
+import { useSentenceTts } from "@/hooks/useSentenceTts";
 
 export default function ViewerScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -71,6 +72,26 @@ export default function ViewerScreen() {
   const totalPages = pages.length;
   const page = pages[currentPage];
 
+  // 문장 단위 TTS 훅
+  const sentenceTts = useSentenceTts({
+    sentences: page?.sentences || [],
+    language,
+    enabled: ttsEnabled,
+    volume: ttsVolume,
+    ready: progressRestored,
+    onAllComplete: () => {
+      ttsFinishedRef.current = true;
+      setIsPlaying(false);
+      tryAutoAdvance();
+    },
+  });
+
+  // 문장 모드일 때 isPlaying 동기화
+  useEffect(() => {
+    if (!sentenceTts.isSentenceMode) return;
+    setIsPlaying(sentenceTts.state === "playing");
+  }, [sentenceTts.isSentenceMode, sentenceTts.state]);
+
   // Refs for stale closure prevention (callbacks)
   const autoPlayRef = useRef(autoPlayEnabled);
   const totalPagesRef = useRef(totalPages);
@@ -85,8 +106,10 @@ export default function ViewerScreen() {
   idRef.current = id;
   bgmEnabledRef.current = bgmEnabled;
 
-  // 자동 넘김: TTS + 비디오 모두 완료 시 다음 페이지 (최소 3초 보장)
+  // 자동 넘김: TTS + 비디오 모두 완료 시 다음 페이지 (최소 3초 보장 + 전환 전 여유)
   const MIN_PAGE_DISPLAY_MS = 3000;
+  /** 페이지 전환 전 여유 시간 (ms) — TTS 끝난 후 바로 넘기지 않고 잠시 대기 */
+  const PAGE_TRANSITION_DELAY_MS = 500;
 
   const advancePage = useCallback(() => {
     setCurrentPage((prev) => {
@@ -109,15 +132,12 @@ export default function ViewerScreen() {
 
     if (autoAdvanceTimer.current) clearTimeout(autoAdvanceTimer.current);
 
-    // 최소 표시 시간 확인 — 충분히 경과하면 즉시 전환 (제스처 체인 유지)
+    // 최소 표시 시간 확인
     const elapsed = Date.now() - pageStartTimeRef.current;
-    if (elapsed >= MIN_PAGE_DISPLAY_MS) {
-      advancePage();
-    } else {
-      // 최소 표시 시간 미달 → 남은 시간만큼 대기
-      const delay = MIN_PAGE_DISPLAY_MS - elapsed;
-      autoAdvanceTimer.current = setTimeout(advancePage, delay);
-    }
+    const remaining = Math.max(0, MIN_PAGE_DISPLAY_MS - elapsed);
+    // 최소 표시 시간 + 전환 여유 시간
+    const delay = remaining + PAGE_TRANSITION_DELAY_MS;
+    autoAdvanceTimer.current = setTimeout(advancePage, delay);
   }, [advancePage]);
 
   // Video player (호출 순서 보장 - early return 전에 선언)
@@ -316,8 +336,23 @@ export default function ViewerScreen() {
     return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
   }, [bgmEnabled, ttsEnabled]);
 
-  // TTS: 페이지/언어 변경 시 오디오 재생
+  // TTS: 페이지/언어 변경 시 오디오 재생 (레거시 — 문장 모드가 아닐 때만)
   const playTts = useCallback(async () => {
+    // 문장 모드면 useSentenceTts 훅이 관리 → 여기서는 skip
+    const currentPageData = pages[currentPage];
+    if (currentPageData?.sentences?.length > 0 &&
+        currentPageData.sentences.some((s) => language === "ko" ? s.audioUrlKo : s.audioUrlEn)) {
+      if (!ttsEnabled) {
+        // TTS 비활성 시 즉시 완료 처리 → 비디오 auto-advance 차단 방지
+        ttsFinishedRef.current = true;
+        tryAutoAdvance();
+      } else {
+        // 문장 모드: ttsFinishedRef는 훅의 onAllComplete에서 설정
+        ttsFinishedRef.current = false;
+      }
+      return;
+    }
+
     // 자동 넘김 타이머 정리
     if (autoAdvanceTimer.current) {
       clearTimeout(autoAdvanceTimer.current);
@@ -340,7 +375,6 @@ export default function ViewerScreen() {
     // 세대 카운터 증가 (이전 호출의 콜백 무효화)
     const generation = ++ttsAbortRef.current;
 
-    const currentPageData = pages[currentPage];
     if (!currentPageData) return;
 
     const audioUrl = language === "ko" ? currentPageData.audioUrlKo : currentPageData.audioUrlEn;
@@ -433,12 +467,15 @@ export default function ViewerScreen() {
     };
   }, [currentPage, language, progressRestored]);
 
-  // TTS: ttsEnabled 토글 (초기 마운트 skip — TTS는 [currentPage, language, progressRestored] effect에서 시작)
+  // TTS: ttsEnabled 토글 (초기 마운트 skip — 문장 모드는 훅이 enabled 변경 감지)
   useEffect(() => {
     if (!ttsEnabledMounted.current) {
       ttsEnabledMounted.current = true;
       return;
     }
+    // 문장 모드면 useSentenceTts 훅이 enabled prop으로 자동 처리
+    if (sentenceTts.isSentenceMode) return;
+
     const webAudio = Platform.OS === "web" ? getWebTtsAudio() : null;
     if (webAudio) {
       if (ttsEnabled) {
@@ -467,15 +504,16 @@ export default function ViewerScreen() {
     }
   }, [ttsEnabled]);
 
-  // TTS: 볼륨 변경
+  // TTS: 볼륨 변경 (문장 모드는 훅이 자체 관리)
   useEffect(() => {
+    if (sentenceTts.isSentenceMode) return;
     const webAudio = Platform.OS === "web" ? getWebTtsAudio() : null;
     if (webAudio) {
       webAudio.volume = ttsVolume / 100;
       return;
     }
     ttsRef.current?.setVolumeAsync(ttsVolume / 100).catch(() => {});
-  }, [ttsVolume]);
+  }, [ttsVolume, sentenceTts.isSentenceMode]);
 
   // Restore progress (초기 1회만 → 완료 후 progressRestored=true로 TTS 시작)
   useEffect(() => {
@@ -524,9 +562,11 @@ export default function ViewerScreen() {
 
     const audioUrl = language === "ko" ? currentPageData.audioUrlKo : currentPageData.audioUrlEn;
     const hasVideo = currentPageData.mediaType === "video" && currentPageData.videoUrl;
+    const hasSentenceAudio = currentPageData.sentences?.length > 0 &&
+      currentPageData.sentences.some((s) => language === "ko" ? s.audioUrlKo : s.audioUrlEn);
 
-    // TTS 오디오 또는 비디오가 있으면 완료 콜백에서 처리
-    if ((ttsEnabled && audioUrl) || hasVideo) return;
+    // TTS 오디오(문장/페이지) 또는 비디오가 있으면 완료 콜백에서 처리
+    if ((ttsEnabled && (audioUrl || hasSentenceAudio)) || hasVideo) return;
 
     const timer = setTimeout(() => {
       setCurrentPage((prev) => (prev < totalPages - 1 ? prev + 1 : prev));
@@ -551,13 +591,24 @@ export default function ViewerScreen() {
   }, [currentPage, totalPages, router, id]);
 
   const togglePlayPause = useCallback(async () => {
+    // 문장 모드: 훅의 pause/resume 사용
+    if (sentenceTts.isSentenceMode) {
+      if (sentenceTts.state === "playing") {
+        await sentenceTts.pause();
+      } else if (sentenceTts.state === "paused") {
+        await sentenceTts.resume();
+      }
+      return;
+    }
+
+    // 레거시 모드
     const webAudio = Platform.OS === "web" ? getWebTtsAudio() : null;
     if (webAudio && webAudio.src) {
       if (!webAudio.paused) {
-        await safePauseWebTts(); // _shouldBePlaying = false → 자동 resume 방지
+        await safePauseWebTts();
         setIsPlaying(false);
       } else {
-        await trackedPlay(webAudio); // _shouldBePlaying = true
+        await trackedPlay(webAudio);
         setIsPlaying(true);
       }
     } else if (ttsRef.current) {
@@ -572,7 +623,7 @@ export default function ViewerScreen() {
     } else {
       setIsPlaying((prev) => !prev);
     }
-  }, []);
+  }, [sentenceTts]);
 
   const handleClose = useCallback(() => {
     router.replace(`/story/${id}`);
@@ -635,6 +686,8 @@ export default function ViewerScreen() {
         language={language}
         videoVisible={videoVisible}
         player={player}
+        sentenceMode={sentenceTts.isSentenceMode}
+        currentSentenceIndex={sentenceTts.currentIndex}
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
       />
