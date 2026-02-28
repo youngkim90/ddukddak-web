@@ -106,8 +106,10 @@ export default function ViewerScreen() {
   idRef.current = id;
   bgmEnabledRef.current = bgmEnabled;
 
-  // 자동 넘김: TTS + 비디오 모두 완료 시 다음 페이지 (최소 3초 보장)
+  // 자동 넘김: TTS + 비디오 모두 완료 시 다음 페이지 (최소 3초 보장 + 전환 전 여유)
   const MIN_PAGE_DISPLAY_MS = 3000;
+  /** 페이지 전환 전 여유 시간 (ms) — TTS 끝난 후 바로 넘기지 않고 잠시 대기 */
+  const PAGE_TRANSITION_DELAY_MS = 500;
 
   const advancePage = useCallback(() => {
     setCurrentPage((prev) => {
@@ -130,15 +132,12 @@ export default function ViewerScreen() {
 
     if (autoAdvanceTimer.current) clearTimeout(autoAdvanceTimer.current);
 
-    // 최소 표시 시간 확인 — 충분히 경과하면 즉시 전환 (제스처 체인 유지)
+    // 최소 표시 시간 확인
     const elapsed = Date.now() - pageStartTimeRef.current;
-    if (elapsed >= MIN_PAGE_DISPLAY_MS) {
-      advancePage();
-    } else {
-      // 최소 표시 시간 미달 → 남은 시간만큼 대기
-      const delay = MIN_PAGE_DISPLAY_MS - elapsed;
-      autoAdvanceTimer.current = setTimeout(advancePage, delay);
-    }
+    const remaining = Math.max(0, MIN_PAGE_DISPLAY_MS - elapsed);
+    // 최소 표시 시간 + 전환 여유 시간
+    const delay = remaining + PAGE_TRANSITION_DELAY_MS;
+    autoAdvanceTimer.current = setTimeout(advancePage, delay);
   }, [advancePage]);
 
   // Video player (호출 순서 보장 - early return 전에 선언)

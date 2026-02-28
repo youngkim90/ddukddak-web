@@ -1,16 +1,37 @@
-import { useRef, useEffect } from "react";
-import { View, Text, ScrollView, GestureResponderEvent } from "react-native";
+import { View, Text, GestureResponderEvent } from "react-native";
 import { Image } from "expo-image";
 import { VideoView } from "expo-video";
 import { getOptimizedImageUrl } from "@/lib/utils";
 import type { StoryPage } from "@/types/story";
+
+/** 대사(큰따옴표 안)와 나레이션을 분리하여 렌더링 */
+function StyledSubtitle({ text, fontSize }: { text: string; fontSize: number }) {
+  // "..." 또는 "..." 패턴으로 대사 구분
+  const parts = text.split(/("[^"]*"|"[^"]*")/g);
+
+  return (
+    <Text
+      className="text-center leading-8 text-white"
+      style={{ fontFamily: "GowunDodum", fontSize, fontWeight: "bold" }}
+    >
+      {parts.map((part, i) => {
+        const isDialogue = /^[""][^]*[""]$/.test(part);
+        return isDialogue ? (
+          <Text key={i} style={{ color: "#FFEAA7" }}>{part}</Text>
+        ) : (
+          <Text key={i}>{part}</Text>
+        );
+      })}
+    </Text>
+  );
+}
 
 interface ViewerMainContentProps {
   page: StoryPage;
   language: "ko" | "en";
   videoVisible: boolean;
   player: React.ComponentProps<typeof VideoView>["player"];
-  /** 문장 단위 모드 — true면 sentences 배열 렌더링 */
+  /** 문장 단위 모드 — true면 현재 문장만 렌더링 */
   sentenceMode: boolean;
   /** 현재 재생 중인 문장 인덱스 (-1이면 비활성) */
   currentSentenceIndex: number;
@@ -28,17 +49,12 @@ export function ViewerMainContent({
   onTouchStart,
   onTouchEnd,
 }: ViewerMainContentProps) {
-  const scrollRef = useRef<ScrollView>(null);
-  const sentenceYPositions = useRef<Record<number, number>>({});
-
-  // 현재 문장으로 자동 스크롤
-  useEffect(() => {
-    if (!sentenceMode || currentSentenceIndex < 0) return;
-    const y = sentenceYPositions.current[currentSentenceIndex];
-    if (y !== undefined && scrollRef.current) {
-      scrollRef.current.scrollTo({ y: Math.max(0, y - 20), animated: true });
-    }
-  }, [sentenceMode, currentSentenceIndex]);
+  // 현재 재생 중인 문장 텍스트 추출
+  const currentSentenceText = sentenceMode && page.sentences.length > 0 && currentSentenceIndex >= 0
+    ? (language === "ko"
+        ? page.sentences[currentSentenceIndex]?.textKo
+        : page.sentences[currentSentenceIndex]?.textEn)
+    : null;
 
   return (
     <View className="flex-1 justify-center" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
@@ -74,51 +90,15 @@ export function ViewerMainContent({
       </View>
 
       <View className="px-6 pt-3" style={{ height: 160 }}>
-        <ScrollView
-          ref={scrollRef}
-          className="flex-1 rounded-xl bg-white/10 px-5 py-4"
-          showsVerticalScrollIndicator={false}
-        >
-          {sentenceMode && page.sentences.length > 0 ? (
-            page.sentences.map((sentence, i) => {
-              const text = language === "ko" ? sentence.textKo : sentence.textEn;
-              if (!text) return null;
-
-              const isCurrent = i === currentSentenceIndex;
-              const isPast = currentSentenceIndex >= 0 && i < currentSentenceIndex;
-              const isFuture = currentSentenceIndex >= 0 && i > currentSentenceIndex;
-              // currentSentenceIndex === -1 (idle) → 모든 문장 기본 밝기
-
-              return (
-                <Text
-                  key={sentence.sentenceIndex}
-                  onLayout={(e) => {
-                    sentenceYPositions.current[i] = e.nativeEvent.layout.y;
-                  }}
-                  className={`text-center leading-8 mb-1 ${
-                    isCurrent
-                      ? "text-white rounded-lg bg-white/15 px-2 py-1"
-                      : isPast
-                        ? "text-white/50"
-                        : isFuture
-                          ? "text-white/35"
-                          : "text-white"
-                  }`}
-                  style={{ fontFamily: "GowunDodum", fontSize: 20, fontWeight: isCurrent ? "bold" : "normal" }}
-                >
-                  {text}
-                </Text>
-              );
-            })
+        <View className="flex-1 rounded-xl bg-white/10 px-5 py-4 justify-center">
+          {currentSentenceText ? (
+            <StyledSubtitle text={currentSentenceText} fontSize={22} />
           ) : (
-            <Text
-              className="text-center leading-8 text-white"
-              style={{ fontFamily: "GowunDodum", fontSize: 20, fontWeight: "bold" }}
-            >
-              {language === "ko" ? page.textKo : page.textEn}
-            </Text>
+            (language === "ko" ? page.textKo : page.textEn) ? (
+              <StyledSubtitle text={(language === "ko" ? page.textKo : page.textEn)} fontSize={22} />
+            ) : null
           )}
-        </ScrollView>
+        </View>
       </View>
     </View>
   );
