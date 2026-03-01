@@ -33,8 +33,9 @@ import { useSentenceTts } from "@/hooks/useSentenceTts";
 export default function ViewerScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const searchParams = useLocalSearchParams<{ id: string; lang?: string }>();
+  const searchParams = useLocalSearchParams<{ id: string; lang?: string; restart?: string }>();
   const initialLang = (searchParams.lang as "ko" | "en") || "ko";
+  const isRestart = searchParams.restart === "1";
 
   const [currentPage, setCurrentPage] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -57,14 +58,14 @@ export default function ViewerScreen() {
   const touchStartX = useRef(0);
   const touchEndX = useRef(0);
 
-  // 크로스페이드 전환 — 이미지 영역은 고정, 이미지 콘텐츠만 opacity 전환
-  // exit 레이어는 정지 상태로 뒤에 대기, enter 레이어가 그 위로 fade-in
-  const opacityEnter = useSharedValue(1);
+  // 크로스페이드 전환 — exit 레이어(이전 이미지)가 위에서 fade-out
+  // enter 레이어(새 이미지)는 항상 opacity 1 → iOS flash 원천 차단
+  const opacityExit = useSharedValue(1);
   const [exitingPageIndex, setExitingPageIndex] = useState<number | null>(null);
   const isAnimatingRef = useRef(false);
 
-  const enterAnimStyle = useAnimatedStyle(() => ({
-    opacity: opacityEnter.value,
+  const exitAnimStyle = useAnimatedStyle(() => ({
+    opacity: opacityExit.value,
   }));
 
   const clearAnimation = useCallback(() => {
@@ -77,9 +78,9 @@ export default function ViewerScreen() {
     if (pendingSlideDir.current === null) return;
     pendingSlideDir.current = null;
 
-    // 새 이미지를 투명하게 시작해 fade-in
-    opacityEnter.value = 0;
-    opacityEnter.value = withTiming(1, {
+    // 네비게이션 핸들러에서 이미 opacityExit.value = 1로 리셋됨
+    // → 여기서는 바로 fade-out 시작
+    opacityExit.value = withTiming(0, {
       duration: 400,
       easing: Easing.inOut(Easing.cubic),
     }, () => {
@@ -91,6 +92,11 @@ export default function ViewerScreen() {
   const { data: pagesData, isLoading, error } = useStoryPages(id);
   const { data: progressData, isFetched: progressFetched } = useProgress(id);
   const saveProgress = useSaveProgress(id);
+  // stale closure 방지 — 언마운트 effect에서 최신 mutate 참조
+  const saveProgressRef = useRef(saveProgress);
+  saveProgressRef.current = saveProgress;
+  // 페이지별 500ms 타이머 발화 여부 추적 — 언마운트 save 중복 방지
+  const progressSavedRef = useRef(false);
 
   // TTS
   const ttsRef = useRef<Audio.Sound | null>(null);
@@ -152,7 +158,9 @@ export default function ViewerScreen() {
   const advancePage = useCallback(() => {
     const prev = currentPageRef.current;
     if (prev < totalPagesRef.current - 1) {
+      opacityExit.value = 1; // exit 레이어가 opacity 1로 마운트되도록 미리 리셋
       isAnimatingRef.current = true;
+      currentPageRef.current = prev + 1; // 렌더 커밋 전 언마운트 대비 동기 업데이트
       setExitingPageIndex(prev);
       pendingSlideDir.current = "next";
       setCurrentPage(prev + 1);
@@ -269,14 +277,14 @@ export default function ViewerScreen() {
       setVideoVisible(false);
 
       // TTS가 미디어 세션을 확보한 뒤 비디오 로드 (순서: BGM → TTS → Video)
-      // TTS play()가 ~50ms면 resolve되므로 500ms면 충분
+      // TTS play()가 ~50ms면 resolve되므로 150ms면 충분
       const videoUrl = currentPageData.videoUrl;
       videoLoadTimer.current = setTimeout(() => {
         pendingVideoUrl.current = videoUrl;
         player.loop = false;
         player.muted = true;
         player.replace(videoUrl);
-      }, 500);
+      }, 150);
 
       // 10초 폴백: playToEnd 미발생 시 자동 진행
       videoFallbackTimer.current = setTimeout(() => {
@@ -558,10 +566,11 @@ export default function ViewerScreen() {
   }, [ttsVolume, sentenceTts.isSentenceMode]);
 
   // Restore progress (초기 1회만 → 완료 후 progressRestored=true로 TTS 시작)
+  // restart=1 파라미터가 있으면 진행률 복원 건너뜀 → 항상 1페이지부터 시작
   useEffect(() => {
     if (progressRestored) return;
     if (progressFetched && pages.length > 0) {
-      if (progressData && progressData.currentPage > 0 && !progressData.isCompleted) {
+      if (!isRestart && progressData && progressData.currentPage > 0 && !progressData.isCompleted) {
         const savedPage = Math.min(progressData.currentPage - 1, pages.length - 1);
         setCurrentPage(savedPage);
       }
@@ -573,18 +582,35 @@ export default function ViewerScreen() {
   // Save progress on page change + 페이지 시작 시간 기록
   useEffect(() => {
     pageStartTimeRef.current = Date.now();
+    progressSavedRef.current = false; // 새 페이지 진입 시 리셋
 
     if (totalPages === 0) return;
 
     const timer = setTimeout(() => {
+      progressSavedRef.current = true; // 타이머 발화 마킹
       saveProgress.mutate({
         currentPage: currentPage + 1,
         isCompleted: currentPage + 1 >= totalPages,
       });
-    }, 500);
+    }, 3000);
 
     return () => clearTimeout(timer);
   }, [currentPage, totalPages]);
+
+  // 언마운트 시 즉시 진행률 저장
+  // 3000ms 타이머가 아직 발화하지 않은 경우에만 실행 (타이머 발화 후엔 skip)
+  // isCompleted는 항상 false — 사용자가 강제 종료한 경우 미완료로 처리
+  // (자연 완료는 3000ms 타이머가 isCompleted: true로 저장)
+  useEffect(() => {
+    return () => {
+      if (totalPagesRef.current > 0 && !progressSavedRef.current) {
+        saveProgressRef.current.mutate({
+          currentPage: currentPageRef.current + 1,
+          isCompleted: false,
+        });
+      }
+    };
+  }, []);
 
   // Android back handler
   useEffect(() => {
@@ -619,17 +645,21 @@ export default function ViewerScreen() {
 
   const handlePrevious = useCallback(() => {
     if (currentPage > 0 && !isAnimatingRef.current) {
+      opacityExit.value = 1;
       isAnimatingRef.current = true;
+      currentPageRef.current = currentPage - 1; // 동기 업데이트
       setExitingPageIndex(currentPage);
       pendingSlideDir.current = "prev";
       setCurrentPage((prev) => prev - 1);
     }
-  }, [currentPage]);
+  }, [currentPage, opacityExit]);
 
   const handleNext = useCallback(() => {
     if (isAnimatingRef.current) return;
     if (currentPage < totalPages - 1) {
+      opacityExit.value = 1;
       isAnimatingRef.current = true;
+      currentPageRef.current = currentPage + 1; // 동기 업데이트
       setExitingPageIndex(currentPage);
       pendingSlideDir.current = "next";
       setCurrentPage((prev) => prev + 1);
@@ -737,7 +767,20 @@ export default function ViewerScreen() {
       <ViewerTopBar onClose={handleClose} onOpenSettings={() => setShowSettings(true)} />
 
       <View style={styles.pageContainer}>
-        {/* Exit layer — 이미지 그대로 정지, 뒤에서 대기 */}
+        {/* Enter layer (아래) — 새 이미지, 항상 opacity 1 */}
+        <View style={{ flex: 1 }}>
+          <ViewerMainContent
+            page={page}
+            language={language}
+            videoVisible={videoVisible}
+            player={player}
+            sentenceMode={sentenceTts.isSentenceMode}
+            currentSentenceIndex={sentenceTts.currentIndex}
+            onTouchStart={handleTouchStart}
+            onTouchEnd={handleTouchEnd}
+          />
+        </View>
+        {/* Exit layer (위) — 이전 이미지가 fade-out 후 제거 */}
         {exitingPage && (
           <View style={StyleSheet.absoluteFill}>
             <ViewerMainContent
@@ -747,26 +790,13 @@ export default function ViewerScreen() {
               player={player}
               sentenceMode={false}
               currentSentenceIndex={-1}
+              imageStyle={exitAnimStyle}
               hideSubtitle
               onTouchStart={() => {}}
               onTouchEnd={() => {}}
             />
           </View>
         )}
-        {/* Enter layer — 새 이미지가 위에서 fade-in, 자막은 고정 표시 */}
-        <View style={{ flex: 1 }}>
-          <ViewerMainContent
-            page={page}
-            language={language}
-            videoVisible={videoVisible}
-            player={player}
-            sentenceMode={sentenceTts.isSentenceMode}
-            currentSentenceIndex={sentenceTts.currentIndex}
-            imageStyle={enterAnimStyle}
-            onTouchStart={handleTouchStart}
-            onTouchEnd={handleTouchEnd}
-          />
-        </View>
       </View>
 
       <ViewerControlBars
