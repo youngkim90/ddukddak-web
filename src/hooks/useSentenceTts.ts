@@ -209,7 +209,10 @@ export function useSentenceTts({
       webAudio.volume = volumeRef.current / 100;
       webAudio.currentTime = 0;
       webAudio.onended = onSentenceEnd;
-      webAudio.onerror = () => onSentenceError();
+      webAudio.onerror = () => {
+        // TODO(Sentry): captureEvent('tts.sentence.load_error', { index, src: audioUrl })
+        onSentenceError();
+      };
 
       try {
         await trackedPlay(webAudio);
@@ -218,6 +221,7 @@ export function useSentenceTts({
           return;
         }
       } catch {
+        // TODO(Sentry): captureEvent('tts.sentence.playback_error', { index, src: audioUrl })
         onSentenceError();
       }
       return;
@@ -299,6 +303,7 @@ export function useSentenceTts({
     stopAll(); // fire-and-forget
 
     if (!hasSentenceAudio || !enabled) {
+      // TODO(Sentry): if (!hasSentenceAudio) captureEvent('tts.sentence.fallback', { reason: 'no_audio' })
       setState("idle");
       stateRef.current = "idle";
       setCurrentIndex(-1);

@@ -1,6 +1,7 @@
-import { View, Text, GestureResponderEvent } from "react-native";
+import { View, Text, GestureResponderEvent, StyleProp, ViewStyle } from "react-native";
 import { Image } from "expo-image";
 import { VideoView } from "expo-video";
+import Animated from "react-native-reanimated";
 import { getOptimizedImageUrl } from "@/lib/utils";
 import type { StoryPage } from "@/types/story";
 
@@ -37,6 +38,10 @@ interface ViewerMainContentProps {
   currentSentenceIndex: number;
   onTouchStart: (e: GestureResponderEvent) => void;
   onTouchEnd: (e: GestureResponderEvent) => void;
+  /** 이미지 영역에만 적용할 Reanimated 슬라이드 스타일 */
+  imageStyle?: StyleProp<ViewStyle>;
+  /** true면 자막 영역 숨김 (exit 레이어용) */
+  hideSubtitle?: boolean;
 }
 
 export function ViewerMainContent({
@@ -48,6 +53,8 @@ export function ViewerMainContent({
   currentSentenceIndex,
   onTouchStart,
   onTouchEnd,
+  imageStyle,
+  hideSubtitle = false,
 }: ViewerMainContentProps) {
   // 현재 재생 중인 문장 텍스트 추출
   // TTS 미시작(index=-1)이면 첫 문장을 기본 표시
@@ -62,48 +69,59 @@ export function ViewerMainContent({
 
   return (
     <View className="flex-1 justify-center" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
-      <View className="items-center" style={{ paddingHorizontal: "2%" }}>
-        {page.imageUrl ? (
-          <View className="w-full aspect-[3/2] rounded-xl overflow-hidden">
-            <Image
-              source={{ uri: getOptimizedImageUrl(page.imageUrl, 800) }}
-              style={{ width: "100%", height: "100%" }}
-              contentFit="cover"
-            />
-            {page.mediaType === "video" && page.videoUrl && (
-              <VideoView
-                player={player}
-                style={{
-                  position: "absolute",
-                  top: 0,
-                  left: 0,
-                  width: "100%",
-                  height: "100%",
-                  opacity: videoVisible ? 1 : 0,
-                }}
-                contentFit="cover"
-                nativeControls={false}
-                playsInline={true}
-                allowsFullscreen={false}
-              />
+      {/* 이미지/영상 영역 — imageStyle로 슬라이드 애니메이션, overflow:hidden으로 자막 영역 침범 방지 */}
+      <View style={{ overflow: "hidden" }}>
+        <Animated.View style={imageStyle}>
+          <View className="items-center" style={{ paddingHorizontal: "2%" }}>
+            {page.imageUrl ? (
+              <View className="w-full aspect-[3/2] rounded-xl overflow-hidden">
+                <Image
+                  source={{ uri: getOptimizedImageUrl(page.imageUrl, 800) }}
+                  style={{ width: "100%", height: "100%" }}
+                  contentFit="cover"
+                />
+                {page.mediaType === "video" && page.videoUrl && (
+                  <VideoView
+                    player={player}
+                    style={{
+                      position: "absolute",
+                      top: 0,
+                      left: 0,
+                      width: "100%",
+                      height: "100%",
+                      opacity: videoVisible ? 1 : 0,
+                    }}
+                    contentFit="cover"
+                    nativeControls={false}
+                    playsInline={true}
+                    allowsFullscreen={false}
+                  />
+                )}
+              </View>
+            ) : (
+              <View className="w-full aspect-[3/2] rounded-xl bg-[#2A2A3E]" />
             )}
           </View>
-        ) : (
-          <View className="w-full aspect-[3/2] rounded-xl bg-[#2A2A3E]" />
-        )}
+        </Animated.View>
       </View>
 
-      <View className="px-6 pt-3" style={{ height: 160 }}>
-        <View className="flex-1 rounded-xl bg-white/10 px-5 py-4 justify-center">
-          {currentSentenceText ? (
-            <StyledSubtitle text={currentSentenceText} fontSize={22} />
-          ) : (
-            (language === "ko" ? page.textKo : page.textEn) ? (
-              <StyledSubtitle text={(language === "ko" ? page.textKo : page.textEn)} fontSize={22} />
-            ) : null
-          )}
+      {/* 자막 영역 — 애니메이션 없이 항상 고정 */}
+      {/* hideSubtitle일 때도 동일한 height의 빈 공간을 유지해 이미지 Y 위치를 맞춤 */}
+      {!hideSubtitle ? (
+        <View className="px-6 pt-3" style={{ height: 160 }}>
+          <View className="flex-1 rounded-xl bg-white/10 px-5 py-4 justify-center">
+            {currentSentenceText ? (
+              <StyledSubtitle text={currentSentenceText} fontSize={22} />
+            ) : (
+              (language === "ko" ? page.textKo : page.textEn) ? (
+                <StyledSubtitle text={(language === "ko" ? page.textKo : page.textEn)} fontSize={22} />
+              ) : null
+            )}
+          </View>
         </View>
-      </View>
+      ) : (
+        <View style={{ height: 160 }} />
+      )}
     </View>
   );
 }
