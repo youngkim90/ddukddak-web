@@ -92,6 +92,9 @@ export default function ViewerScreen() {
   const { data: pagesData, isLoading, error } = useStoryPages(id);
   const { data: progressData, isFetched: progressFetched } = useProgress(id);
   const saveProgress = useSaveProgress(id);
+  // stale closure 방지 — 언마운트 effect에서 최신 mutate 참조
+  const saveProgressRef = useRef(saveProgress);
+  saveProgressRef.current = saveProgress;
 
   // TTS
   const ttsRef = useRef<Audio.Sound | null>(null);
@@ -587,6 +590,19 @@ export default function ViewerScreen() {
 
     return () => clearTimeout(timer);
   }, [currentPage, totalPages]);
+
+  // 언마운트 시 즉시 진행률 저장
+  // 빠른 페이지 넘김 후 뒤로 가기 시 500ms 타이머가 취소되는 문제 방지
+  useEffect(() => {
+    return () => {
+      if (totalPagesRef.current > 0) {
+        saveProgressRef.current.mutate({
+          currentPage: currentPageRef.current + 1,
+          isCompleted: currentPageRef.current + 1 >= totalPagesRef.current,
+        });
+      }
+    };
+  }, []);
 
   // Android back handler
   useEffect(() => {
