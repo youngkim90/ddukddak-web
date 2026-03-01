@@ -1,12 +1,20 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useLayoutEffect, useCallback, useRef } from "react";
 import {
   View,
   Text,
   Pressable,
   BackHandler,
   Platform,
+  StyleSheet,
   GestureResponderEvent,
 } from "react-native";
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  Easing,
+  runOnJS,
+} from "react-native-reanimated";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useVideoPlayer } from "expo-video";
@@ -48,6 +56,36 @@ export default function ViewerScreen() {
   // Swipe refs
   const touchStartX = useRef(0);
   const touchEndX = useRef(0);
+
+  // 크로스페이드 전환 — 이미지 영역은 고정, 이미지 콘텐츠만 opacity 전환
+  // exit 레이어는 정지 상태로 뒤에 대기, enter 레이어가 그 위로 fade-in
+  const opacityEnter = useSharedValue(1);
+  const [exitingPageIndex, setExitingPageIndex] = useState<number | null>(null);
+  const isAnimatingRef = useRef(false);
+
+  const enterAnimStyle = useAnimatedStyle(() => ({
+    opacity: opacityEnter.value,
+  }));
+
+  const clearAnimation = useCallback(() => {
+    setExitingPageIndex(null);
+    isAnimatingRef.current = false;
+  }, []);
+
+  const pendingSlideDir = useRef<"next" | "prev" | null>(null);
+  useLayoutEffect(() => {
+    if (pendingSlideDir.current === null) return;
+    pendingSlideDir.current = null;
+
+    // 새 이미지를 투명하게 시작해 fade-in
+    opacityEnter.value = 0;
+    opacityEnter.value = withTiming(1, {
+      duration: 400,
+      easing: Easing.inOut(Easing.cubic),
+    }, () => {
+      runOnJS(clearAnimation)();
+    });
+  }, [currentPage]);
 
   const { data: storyData } = useStory(id);
   const { data: pagesData, isLoading, error } = useStoryPages(id);
@@ -109,17 +147,21 @@ export default function ViewerScreen() {
   // 자동 넘김: TTS + 비디오 모두 완료 시 다음 페이지 (최소 3초 보장 + 전환 전 여유)
   const MIN_PAGE_DISPLAY_MS = 3000;
   /** 페이지 전환 전 여유 시간 (ms) — TTS 끝난 후 바로 넘기지 않고 잠시 대기 */
-  const PAGE_TRANSITION_DELAY_MS = 500;
+  const PAGE_TRANSITION_DELAY_MS = 700;
 
   const advancePage = useCallback(() => {
-    setCurrentPage((prev) => {
-      if (prev < totalPagesRef.current - 1) return prev + 1;
+    const prev = currentPageRef.current;
+    if (prev < totalPagesRef.current - 1) {
+      isAnimatingRef.current = true;
+      setExitingPageIndex(prev);
+      pendingSlideDir.current = "next";
+      setCurrentPage(prev + 1);
+    } else {
       // 마지막 페이지 → 2초 후 동화 상세로 이동
       setTimeout(() => {
         routerRef.current.replace(`/story/${idRef.current}`);
       }, 2000);
-      return prev;
-    });
+    }
   }, []);
 
   const tryAutoAdvance = useCallback(() => {
@@ -576,13 +618,20 @@ export default function ViewerScreen() {
   }, [autoPlayEnabled, currentPage, totalPages, pages, language, ttsEnabled]);
 
   const handlePrevious = useCallback(() => {
-    if (currentPage > 0) {
+    if (currentPage > 0 && !isAnimatingRef.current) {
+      isAnimatingRef.current = true;
+      setExitingPageIndex(currentPage);
+      pendingSlideDir.current = "prev";
       setCurrentPage((prev) => prev - 1);
     }
   }, [currentPage]);
 
   const handleNext = useCallback(() => {
+    if (isAnimatingRef.current) return;
     if (currentPage < totalPages - 1) {
+      isAnimatingRef.current = true;
+      setExitingPageIndex(currentPage);
+      pendingSlideDir.current = "next";
       setCurrentPage((prev) => prev + 1);
     } else {
       // End of story
@@ -656,6 +705,7 @@ export default function ViewerScreen() {
   };
 
   const progressPercent = totalPages > 0 ? ((currentPage + 1) / totalPages) * 100 : 0;
+  const exitingPage = exitingPageIndex !== null ? pages[exitingPageIndex] : null;
 
   if (isLoading) {
     return (
@@ -686,16 +736,38 @@ export default function ViewerScreen() {
       <StatusBar hidden />
       <ViewerTopBar onClose={handleClose} onOpenSettings={() => setShowSettings(true)} />
 
-      <ViewerMainContent
-        page={page}
-        language={language}
-        videoVisible={videoVisible}
-        player={player}
-        sentenceMode={sentenceTts.isSentenceMode}
-        currentSentenceIndex={sentenceTts.currentIndex}
-        onTouchStart={handleTouchStart}
-        onTouchEnd={handleTouchEnd}
-      />
+      <View style={styles.pageContainer}>
+        {/* Exit layer — 이미지 그대로 정지, 뒤에서 대기 */}
+        {exitingPage && (
+          <View style={StyleSheet.absoluteFill}>
+            <ViewerMainContent
+              page={exitingPage}
+              language={language}
+              videoVisible={false}
+              player={player}
+              sentenceMode={false}
+              currentSentenceIndex={-1}
+              hideSubtitle
+              onTouchStart={() => {}}
+              onTouchEnd={() => {}}
+            />
+          </View>
+        )}
+        {/* Enter layer — 새 이미지가 위에서 fade-in, 자막은 고정 표시 */}
+        <View style={{ flex: 1 }}>
+          <ViewerMainContent
+            page={page}
+            language={language}
+            videoVisible={videoVisible}
+            player={player}
+            sentenceMode={sentenceTts.isSentenceMode}
+            currentSentenceIndex={sentenceTts.currentIndex}
+            imageStyle={enterAnimStyle}
+            onTouchStart={handleTouchStart}
+            onTouchEnd={handleTouchEnd}
+          />
+        </View>
+      </View>
 
       <ViewerControlBars
         currentPage={currentPage}
@@ -726,3 +798,10 @@ export default function ViewerScreen() {
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  pageContainer: {
+    flex: 1,
+    overflow: "hidden",
+  },
+});
