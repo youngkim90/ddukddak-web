@@ -95,6 +95,8 @@ export default function ViewerScreen() {
   // stale closure 방지 — 언마운트 effect에서 최신 mutate 참조
   const saveProgressRef = useRef(saveProgress);
   saveProgressRef.current = saveProgress;
+  // 페이지별 500ms 타이머 발화 여부 추적 — 언마운트 save 중복 방지
+  const progressSavedRef = useRef(false);
 
   // TTS
   const ttsRef = useRef<Audio.Sound | null>(null);
@@ -580,10 +582,12 @@ export default function ViewerScreen() {
   // Save progress on page change + 페이지 시작 시간 기록
   useEffect(() => {
     pageStartTimeRef.current = Date.now();
+    progressSavedRef.current = false; // 새 페이지 진입 시 리셋
 
     if (totalPages === 0) return;
 
     const timer = setTimeout(() => {
+      progressSavedRef.current = true; // 타이머 발화 마킹
       saveProgress.mutate({
         currentPage: currentPage + 1,
         isCompleted: currentPage + 1 >= totalPages,
@@ -594,13 +598,15 @@ export default function ViewerScreen() {
   }, [currentPage, totalPages]);
 
   // 언마운트 시 즉시 진행률 저장
-  // 빠른 페이지 넘김 후 뒤로 가기 시 500ms 타이머가 취소되는 문제 방지
+  // 500ms 타이머가 아직 발화하지 않은 경우에만 실행 (타이머 발화 후엔 skip)
+  // isCompleted는 항상 false — 사용자가 강제 종료한 경우 미완료로 처리
+  // (자연 완료는 500ms 타이머가 isCompleted: true로 저장)
   useEffect(() => {
     return () => {
-      if (totalPagesRef.current > 0) {
+      if (totalPagesRef.current > 0 && !progressSavedRef.current) {
         saveProgressRef.current.mutate({
           currentPage: currentPageRef.current + 1,
-          isCompleted: currentPageRef.current + 1 >= totalPagesRef.current,
+          isCompleted: false,
         });
       }
     };
