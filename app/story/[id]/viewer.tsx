@@ -19,7 +19,7 @@ import {
   ViewerSettingsModal,
   ViewerTopBar,
 } from "@/components/story";
-import { getWebTtsAudio, cleanupWebTts, safePauseWebTts, trackedPlay, isWebTtsActive, markWebTtsDone, resumeWebTts } from "@/lib/webTts";
+import { getWebTtsAudio, activateWebTts, cleanupWebTts, safePauseWebTts, trackedPlay, isWebTtsActive, markWebTtsDone, resumeWebTts } from "@/lib/webTts";
 import { useSentenceTts } from "@/hooks/useSentenceTts";
 
 export default function ViewerScreen() {
@@ -597,6 +597,11 @@ export default function ViewerScreen() {
         await sentenceTts.pause();
       } else if (sentenceTts.state === "paused") {
         await sentenceTts.resume();
+      } else {
+        // idle / page_complete → 유저 제스처 내에서 즉시 재시작
+        // await 없이 호출해야 iOS 제스처 컨텍스트 유지됨
+        if (Platform.OS === "web") activateWebTts();
+        sentenceTts.restart(); // no await
       }
       return;
     }

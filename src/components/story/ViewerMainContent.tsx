@@ -50,10 +50,14 @@ export function ViewerMainContent({
   onTouchEnd,
 }: ViewerMainContentProps) {
   // 현재 재생 중인 문장 텍스트 추출
-  const currentSentenceText = sentenceMode && page.sentences.length > 0 && currentSentenceIndex >= 0
+  // TTS 미시작(index=-1)이면 첫 문장을 기본 표시
+  const sentenceIdx = sentenceMode && page.sentences.length > 0
+    ? Math.max(0, currentSentenceIndex)
+    : -1;
+  const currentSentenceText = sentenceIdx >= 0
     ? (language === "ko"
-        ? page.sentences[currentSentenceIndex]?.textKo
-        : page.sentences[currentSentenceIndex]?.textEn)
+        ? page.sentences[sentenceIdx]?.textKo
+        : page.sentences[sentenceIdx]?.textEn)
     : null;
 
   return (
