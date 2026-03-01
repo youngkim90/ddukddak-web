@@ -14,10 +14,10 @@ import { Audio } from "expo-av";
 import type { Sentence } from "@/types/story";
 import {
   getWebTtsAudio,
+  ensureWebTtsAudio,
   safePauseWebTts,
   trackedPlay,
   markWebTtsDone,
-  isWebTtsActive,
 } from "@/lib/webTts";
 
 export type SentenceTtsState =
@@ -43,6 +43,8 @@ interface UseSentenceTtsReturn {
   isSentenceMode: boolean;
   pause: () => Promise<void>;
   resume: () => Promise<void>;
+  /** 큐 처음부터 재시작 (유저 제스처 내에서 호출) */
+  restart: () => Promise<void>;
   /** 페이지 전환 등으로 큐 즉시 중단 */
   reset: () => void;
 }
@@ -113,8 +115,8 @@ export function useSentenceTts({
     const webAudio = Platform.OS === "web" ? getWebTtsAudio() : null;
     if (webAudio) {
       await safePauseWebTts();
-      webAudio.onended = null;
-      webAudio.onerror = null;
+      // onended/onerror는 제거하지 않음 — 세대 카운터(gen)가 오래된 콜백을 막음
+      // fire-and-forget 호출 시 새 세대의 콜백을 지워버리는 race condition 방지
     }
     await cleanupNativeSounds();
   }, [clearGapTimer, cleanupNativeSounds]);
@@ -192,7 +194,12 @@ export function useSentenceTts({
 
     // ── 웹: HTMLAudioElement src 교체 ──
     if (Platform.OS === "web") {
-      const webAudio = getWebTtsAudio();
+      let webAudio = getWebTtsAudio();
+      if (!webAudio) {
+        // 폴백: 모듈 인스턴스 불일치 등으로 audio가 없으면 요소만 생성
+        // (unlock은 하지 않음 — src 충돌 방지)
+        webAudio = ensureWebTtsAudio();
+      }
       if (!webAudio) {
         onSentenceError();
         return;
@@ -202,7 +209,7 @@ export function useSentenceTts({
       webAudio.volume = volumeRef.current / 100;
       webAudio.currentTime = 0;
       webAudio.onended = onSentenceEnd;
-      webAudio.onerror = onSentenceError;
+      webAudio.onerror = () => onSentenceError();
 
       try {
         await trackedPlay(webAudio);
@@ -286,8 +293,10 @@ export function useSentenceTts({
   // ── 큐 시작 ──
 
   const startQueue = useCallback(async () => {
-    await stopAll();
+    // await 없이 세대 먼저 증가 → 이전 콜백은 gen 체크로 무효화
+    // (stopAll을 await하면 iOS 제스처 컨텍스트 만료됨)
     const gen = ++generationRef.current;
+    stopAll(); // fire-and-forget
 
     if (!hasSentenceAudio || !enabled) {
       setState("idle");
@@ -417,6 +426,7 @@ export function useSentenceTts({
     isSentenceMode: hasSentenceAudio,
     pause,
     resume,
+    restart: startQueue,
     reset,
   };
 }

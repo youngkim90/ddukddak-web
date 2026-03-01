@@ -1,38 +1,33 @@
 /**
  * Web TTS — 단일 HTMLAudioElement 재사용 (iOS Safari 오디오 정책 대응)
  *
- * iOS Safari는 새 HTMLAudioElement.play()마다 유저 제스처를 요구함.
- * 한번 제스처 내에서 play()된 요소는 src 변경 후에도 play() 가능.
- * → "읽기 시작" 버튼 탭 시 activate() 호출 → 이후 모든 TTS에서 재사용.
+ * iOS Safari: 무음 WAV play()로 unlock 시도 시 src 충돌(AbortError) 발생.
+ * 대신 오디오 요소만 생성하고, 실제 MP3 play()를 제스처 안에서 직접 호출.
+ * startQueue의 await 제거로 play()가 제스처 컨텍스트 내에서 동기적으로 호출됨.
  */
-
-// 약 0.1초 무음 WAV (base64)
-const SILENT_WAV =
-  "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=";
 
 let _audio: HTMLAudioElement | null = null;
 let _playPromise: Promise<void> | null = null;
 /** true = TTS가 재생 중이어야 하는 상태 */
 let _shouldBePlaying = false;
 
-/** 유저 제스처 핸들러 내에서 호출 — 오디오 요소 생성 + 활성화 */
+/** 유저 제스처 핸들러 내에서 호출 — 오디오 요소 생성 */
 export function activateWebTts(): void {
   if (typeof document === "undefined") return;
-
   if (!_audio) {
     _audio = document.createElement("audio");
     _audio.setAttribute("playsinline", "");
   }
+}
 
-  // 무음 재생으로 요소 "unlock" — play 완료 후 즉시 정리
-  _audio.src = SILENT_WAV;
-  _playPromise = _audio.play()
-    .then(() => {
-      _audio!.pause();
-      _audio!.currentTime = 0;
-    })
-    .catch(() => {})
-    .finally(() => { _playPromise = null; });
+/** 오디오 요소만 생성 — 모듈 인스턴스 불일치 폴백용 */
+export function ensureWebTtsAudio(): HTMLAudioElement | null {
+  if (typeof document === "undefined") return null;
+  if (!_audio) {
+    _audio = document.createElement("audio");
+    _audio.setAttribute("playsinline", "");
+  }
+  return _audio;
 }
 
 /** 활성화된 오디오 요소 반환 (없으면 null) */
@@ -69,13 +64,16 @@ export async function safePauseWebTts(): Promise<void> {
   _audio.pause();
 }
 
-/** play()를 추적하며 호출 (AbortError를 내부에서 catch) */
+/** play()를 추적하며 호출 — 실패 시 에러를 호출자에게 전파 */
 export function trackedPlay(audio: HTMLAudioElement): Promise<void> {
   _shouldBePlaying = true;
-  _playPromise = audio.play()
-    .catch(() => { _shouldBePlaying = false; })
-    .finally(() => { _playPromise = null; });
-  return _playPromise;
+  const p = audio.play();
+  _playPromise = p.catch(() => {}).finally(() => { _playPromise = null; });
+  // 호출자에게는 원본 Promise 반환 (reject 전파)
+  return p.catch((err) => {
+    _shouldBePlaying = false;
+    throw err;
+  });
 }
 
 /** 뷰어 언마운트 시 정리 */
@@ -85,7 +83,6 @@ export function cleanupWebTts(): void {
   _audio.pause();
   _audio.onended = null;
   _audio.onerror = null;
-  _audio.src = SILENT_WAV;
   _audio.currentTime = 0;
   _playPromise = null;
 }
