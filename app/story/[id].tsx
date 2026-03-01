@@ -152,7 +152,7 @@ export default function StoryDetailScreen() {
             <Button
               onPress={() => {
                 if (Platform.OS === "web") activateWebTts();
-                router.push(`/story/${id}/viewer?lang=${language}`);
+                router.push(`/story/${id}/viewer?lang=${language}&restart=1`);
               }}
               fullWidth
               size="lg"

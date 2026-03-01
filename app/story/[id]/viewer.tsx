@@ -33,8 +33,9 @@ import { useSentenceTts } from "@/hooks/useSentenceTts";
 export default function ViewerScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const searchParams = useLocalSearchParams<{ id: string; lang?: string }>();
+  const searchParams = useLocalSearchParams<{ id: string; lang?: string; restart?: string }>();
   const initialLang = (searchParams.lang as "ko" | "en") || "ko";
+  const isRestart = searchParams.restart === "1";
 
   const [currentPage, setCurrentPage] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -558,10 +559,11 @@ export default function ViewerScreen() {
   }, [ttsVolume, sentenceTts.isSentenceMode]);
 
   // Restore progress (초기 1회만 → 완료 후 progressRestored=true로 TTS 시작)
+  // restart=1 파라미터가 있으면 진행률 복원 건너뜀 → 항상 1페이지부터 시작
   useEffect(() => {
     if (progressRestored) return;
     if (progressFetched && pages.length > 0) {
-      if (progressData && progressData.currentPage > 0 && !progressData.isCompleted) {
+      if (!isRestart && progressData && progressData.currentPage > 0 && !progressData.isCompleted) {
         const savedPage = Math.min(progressData.currentPage - 1, pages.length - 1);
         setCurrentPage(savedPage);
       }
