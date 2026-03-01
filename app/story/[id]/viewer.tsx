@@ -78,8 +78,8 @@ export default function ViewerScreen() {
     if (pendingSlideDir.current === null) return;
     pendingSlideDir.current = null;
 
-    // 이전 이미지를 위에서 fade-out (새 이미지는 처음부터 opacity 1)
-    opacityExit.value = 1;
+    // 네비게이션 핸들러에서 이미 opacityExit.value = 1로 리셋됨
+    // → 여기서는 바로 fade-out 시작
     opacityExit.value = withTiming(0, {
       duration: 400,
       easing: Easing.inOut(Easing.cubic),
@@ -156,6 +156,7 @@ export default function ViewerScreen() {
   const advancePage = useCallback(() => {
     const prev = currentPageRef.current;
     if (prev < totalPagesRef.current - 1) {
+      opacityExit.value = 1; // exit 레이어가 opacity 1로 마운트되도록 미리 리셋
       isAnimatingRef.current = true;
       setExitingPageIndex(prev);
       pendingSlideDir.current = "next";
@@ -637,16 +638,18 @@ export default function ViewerScreen() {
 
   const handlePrevious = useCallback(() => {
     if (currentPage > 0 && !isAnimatingRef.current) {
+      opacityExit.value = 1;
       isAnimatingRef.current = true;
       setExitingPageIndex(currentPage);
       pendingSlideDir.current = "prev";
       setCurrentPage((prev) => prev - 1);
     }
-  }, [currentPage]);
+  }, [currentPage, opacityExit]);
 
   const handleNext = useCallback(() => {
     if (isAnimatingRef.current) return;
     if (currentPage < totalPages - 1) {
+      opacityExit.value = 1;
       isAnimatingRef.current = true;
       setExitingPageIndex(currentPage);
       pendingSlideDir.current = "next";
