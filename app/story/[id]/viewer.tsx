@@ -57,14 +57,14 @@ export default function ViewerScreen() {
   const touchStartX = useRef(0);
   const touchEndX = useRef(0);
 
-  // 크로스페이드 전환 — 이미지 영역은 고정, 이미지 콘텐츠만 opacity 전환
-  // exit 레이어는 정지 상태로 뒤에 대기, enter 레이어가 그 위로 fade-in
-  const opacityEnter = useSharedValue(1);
+  // 크로스페이드 전환 — exit 레이어(이전 이미지)가 위에서 fade-out
+  // enter 레이어(새 이미지)는 항상 opacity 1 → iOS flash 원천 차단
+  const opacityExit = useSharedValue(1);
   const [exitingPageIndex, setExitingPageIndex] = useState<number | null>(null);
   const isAnimatingRef = useRef(false);
 
-  const enterAnimStyle = useAnimatedStyle(() => ({
-    opacity: opacityEnter.value,
+  const exitAnimStyle = useAnimatedStyle(() => ({
+    opacity: opacityExit.value,
   }));
 
   const clearAnimation = useCallback(() => {
@@ -77,9 +77,9 @@ export default function ViewerScreen() {
     if (pendingSlideDir.current === null) return;
     pendingSlideDir.current = null;
 
-    // 새 이미지를 투명하게 시작해 fade-in
-    opacityEnter.value = 0;
-    opacityEnter.value = withTiming(1, {
+    // 이전 이미지를 위에서 fade-out (새 이미지는 처음부터 opacity 1)
+    opacityExit.value = 1;
+    opacityExit.value = withTiming(0, {
       duration: 400,
       easing: Easing.inOut(Easing.cubic),
     }, () => {
@@ -269,14 +269,14 @@ export default function ViewerScreen() {
       setVideoVisible(false);
 
       // TTS가 미디어 세션을 확보한 뒤 비디오 로드 (순서: BGM → TTS → Video)
-      // TTS play()가 ~50ms면 resolve되므로 500ms면 충분
+      // TTS play()가 ~50ms면 resolve되므로 150ms면 충분
       const videoUrl = currentPageData.videoUrl;
       videoLoadTimer.current = setTimeout(() => {
         pendingVideoUrl.current = videoUrl;
         player.loop = false;
         player.muted = true;
         player.replace(videoUrl);
-      }, 500);
+      }, 150);
 
       // 10초 폴백: playToEnd 미발생 시 자동 진행
       videoFallbackTimer.current = setTimeout(() => {
@@ -737,7 +737,20 @@ export default function ViewerScreen() {
       <ViewerTopBar onClose={handleClose} onOpenSettings={() => setShowSettings(true)} />
 
       <View style={styles.pageContainer}>
-        {/* Exit layer — 이미지 그대로 정지, 뒤에서 대기 */}
+        {/* Enter layer (아래) — 새 이미지, 항상 opacity 1 */}
+        <View style={{ flex: 1 }}>
+          <ViewerMainContent
+            page={page}
+            language={language}
+            videoVisible={videoVisible}
+            player={player}
+            sentenceMode={sentenceTts.isSentenceMode}
+            currentSentenceIndex={sentenceTts.currentIndex}
+            onTouchStart={handleTouchStart}
+            onTouchEnd={handleTouchEnd}
+          />
+        </View>
+        {/* Exit layer (위) — 이전 이미지가 fade-out 후 제거 */}
         {exitingPage && (
           <View style={StyleSheet.absoluteFill}>
             <ViewerMainContent
@@ -747,26 +760,13 @@ export default function ViewerScreen() {
               player={player}
               sentenceMode={false}
               currentSentenceIndex={-1}
+              imageStyle={exitAnimStyle}
               hideSubtitle
               onTouchStart={() => {}}
               onTouchEnd={() => {}}
             />
           </View>
         )}
-        {/* Enter layer — 새 이미지가 위에서 fade-in, 자막은 고정 표시 */}
-        <View style={{ flex: 1 }}>
-          <ViewerMainContent
-            page={page}
-            language={language}
-            videoVisible={videoVisible}
-            player={player}
-            sentenceMode={sentenceTts.isSentenceMode}
-            currentSentenceIndex={sentenceTts.currentIndex}
-            imageStyle={enterAnimStyle}
-            onTouchStart={handleTouchStart}
-            onTouchEnd={handleTouchEnd}
-          />
-        </View>
       </View>
 
       <ViewerControlBars
