@@ -47,7 +47,7 @@ fairytale/
 | OAuth 인증 (Google, Kakao) | ✅ 완료 |
 | Free Mode UI | ✅ 완료 |
 | AI 비디오 뷰어 (expo-video) | ✅ 완료 |
-| TTS 나레이션 (웹) | ✅ 완료 |
+| TTS 나레이션 (웹 + iOS/Android) | ✅ 완료 |
 | 결제 연동 (RevenueCat / 토스) | ⏳ 미착수 |
 | Google Play 출시 | ⏳ 수동 작업 대기 |
 
@@ -325,9 +325,16 @@ npx expo export --platform web && eas deploy --prod # Web 배포
 | 문장 단위 | `sentences.length > 0` + audioUrl 있음 | 문장별 순차 재생 + 하이라이트 |
 | 페이지 단위 (폴백) | sentences 비어있음 | 기존 `audioUrlKo/En` 단일 재생 |
 
-- 웹: HTMLAudioElement `src` 교체 방식 (iOS Safari 제스처 정책 대응됨)
+- 웹: HTMLAudioElement `src` 교체 방식 (단일 요소 재사용)
 - 네이티브: expo-av `Audio.Sound` double-buffering (2개 교대 + 프리로드)
 - 문장 간 대기: 400ms (`SENTENCE_GAP_MS`)
+
+**iOS Safari 오디오 정책 핵심 규칙**:
+- `activateWebTts()`: 유저 제스처(탭) 핸들러 내에서 호출 — 오디오 요소 생성만 수행 (SILENT_WAV 재생 X)
+- `startQueue()` 내 `stopAll()` fire-and-forget — `await` 하면 제스처 컨텍스트 만료됨
+- `stopAll()`에서 `onended`/`onerror` 제거 X — 세대 카운터(generationRef)가 stale 콜백 차단
+- `restart()`: `idle`/`page_complete` 상태에서 유저 탭 → 재시작 (await 없이 호출)
+- `ensureWebTtsAudio()`: Metro HMR 모듈 인스턴스 불일치 시 폴백 생성
 
 ### StoryPage 미디어 필드
 
@@ -367,4 +374,4 @@ interface StoryPage {
 
 ---
 
-*마지막 업데이트: 2026-02-25 (문장 단위 TTS 구현)*
+*마지막 업데이트: 2026-02-28 (문장 단위 TTS iOS Safari 오디오 정책 대응 완료)*

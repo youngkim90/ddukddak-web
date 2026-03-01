@@ -151,7 +151,7 @@ eas build --platform android --profile production
 - [x] 무료 모드 UI (FREE_MODE 플래그)
 - [x] AI 영상 뷰어 (expo-video 오버레이 패턴)
 - [x] BGM 오디오 재생 (expo-av, 볼륨 조절)
-- [x] TTS 나레이션 (문장 단위 재생 + 하이라이트)
+- [x] TTS 나레이션 (문장 단위 재생 + 하이라이트, iOS Safari 오디오 정책 대응)
 - [ ] 결제 연동 (인앱결제 RevenueCat + 토스 웹)
 - [ ] Google Play 출시
 
