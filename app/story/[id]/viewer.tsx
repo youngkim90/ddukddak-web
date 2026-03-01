@@ -592,15 +592,15 @@ export default function ViewerScreen() {
         currentPage: currentPage + 1,
         isCompleted: currentPage + 1 >= totalPages,
       });
-    }, 500);
+    }, 3000);
 
     return () => clearTimeout(timer);
   }, [currentPage, totalPages]);
 
   // 언마운트 시 즉시 진행률 저장
-  // 500ms 타이머가 아직 발화하지 않은 경우에만 실행 (타이머 발화 후엔 skip)
+  // 3000ms 타이머가 아직 발화하지 않은 경우에만 실행 (타이머 발화 후엔 skip)
   // isCompleted는 항상 false — 사용자가 강제 종료한 경우 미완료로 처리
-  // (자연 완료는 500ms 타이머가 isCompleted: true로 저장)
+  // (자연 완료는 3000ms 타이머가 isCompleted: true로 저장)
   useEffect(() => {
     return () => {
       if (totalPagesRef.current > 0 && !progressSavedRef.current) {

@@ -26,7 +26,7 @@ export default function StoryDetailScreen() {
 
   const { data: story, isLoading, error } = useStory(id);
   const { data: progressData } = useProgress(id);
-  const hasProgress = !!progressData && progressData.currentPage > 0 && !progressData.isCompleted;
+  const hasProgress = !!progressData && progressData.currentPage > 1 && !progressData.isCompleted;
 
   if (isLoading) return <StoryDetailSkeleton />;
 
