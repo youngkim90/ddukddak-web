@@ -364,6 +364,17 @@ interface StoryPage {
 | 이미지 비율 | 3:2 (1536×1024 가로) |
 | 에러 처리 | 비디오 실패 시 이미지 폴백 (오버레이 패턴) |
 
+### 진행률 저장 (이어서 읽기)
+
+| 항목 | 값 / 설명 |
+|------|----------|
+| 저장 타이머 | 페이지 진입 후 **3000ms** — 빠른 넘김 시 cancel되어 불필요한 API 호출 방지 |
+| 언마운트 저장 | 타이머 미발화 시(`progressSavedRef = false`) 뷰어 종료 직전 즉시 저장 |
+| 낙관적 업데이트 | `useSaveProgress.onMutate`에서 즉시 캐시 반영 → 상세 화면 복귀 시 stale cache 레이스 없음 |
+| refetchType | `onSuccess`에서 `refetchType: 'none'` — 저장 성공마다 즉시 GET refetch하지 않음 (429 방지) |
+| "이어서 읽기" 조건 | `currentPage > 1 && !isCompleted` — 1페이지 진행은 "읽기 시작"만 표시 |
+| `?restart=1` 파라미터 | 뷰어 진입 시 progress 복원 건너뜀 → "처음부터" 버튼이 이 파라미터로 진입 |
+
 ### FREE_MODE (무료 모드)
 
 | 설정 | 값 |
@@ -374,4 +385,4 @@ interface StoryPage {
 
 ---
 
-*마지막 업데이트: 2026-02-28 (문장 단위 TTS iOS Safari 오디오 정책 대응 완료)*
+*마지막 업데이트: 2026-03-02 (진행률 저장 race condition 및 429 오류 수정)*
