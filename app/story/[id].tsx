@@ -6,6 +6,7 @@ import { Clock, BookOpen, Lock } from "lucide-react-native";
 import { Header } from "@/components/layout";
 import { Button, ApiError, StoryDetailSkeleton } from "@/components/ui";
 import { useStory } from "@/hooks/useStories";
+import { useProgress } from "@/hooks/useProgress";
 import { useIsSubscribed } from "@/stores/authStore";
 import {
   CATEGORY_LABELS,
@@ -24,6 +25,8 @@ export default function StoryDetailScreen() {
   const [language, setLanguage] = useState<"ko" | "en">("ko");
 
   const { data: story, isLoading, error } = useStory(id);
+  const { data: progressData } = useProgress(id);
+  const hasProgress = !!progressData && progressData.currentPage > 0 && !progressData.isCompleted;
 
   if (isLoading) return <StoryDetailSkeleton />;
 
@@ -149,16 +152,42 @@ export default function StoryDetailScreen() {
 
           {/* Read Button */}
           {canRead ? (
-            <Button
-              onPress={() => {
-                if (Platform.OS === "web") activateWebTts();
-                router.push(`/story/${id}/viewer?lang=${language}&restart=1`);
-              }}
-              fullWidth
-              size="lg"
-            >
-              읽기 시작
-            </Button>
+            hasProgress ? (
+              <View className="gap-3">
+                <Button
+                  onPress={() => {
+                    if (Platform.OS === "web") activateWebTts();
+                    router.push(`/story/${id}/viewer?lang=${language}`);
+                  }}
+                  fullWidth
+                  size="lg"
+                >
+                  이어서 읽기
+                </Button>
+                <Button
+                  onPress={() => {
+                    if (Platform.OS === "web") activateWebTts();
+                    router.push(`/story/${id}/viewer?lang=${language}&restart=1`);
+                  }}
+                  fullWidth
+                  size="lg"
+                  variant="outline"
+                >
+                  처음부터
+                </Button>
+              </View>
+            ) : (
+              <Button
+                onPress={() => {
+                  if (Platform.OS === "web") activateWebTts();
+                  router.push(`/story/${id}/viewer?lang=${language}&restart=1`);
+                }}
+                fullWidth
+                size="lg"
+              >
+                읽기 시작
+              </Button>
+            )
           ) : (
             <Button
               onPress={() => router.push("/subscription")}

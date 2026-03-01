@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 interface ButtonProps {
   children: React.ReactNode;
   onPress?: () => void;
-  variant?: "primary" | "secondary" | "ghost" | "kakao" | "google";
+  variant?: "primary" | "secondary" | "outline" | "ghost" | "kakao" | "google";
   size?: "sm" | "md" | "lg";
   fullWidth?: boolean;
   disabled?: boolean;
@@ -15,6 +15,7 @@ interface ButtonProps {
 const variantStyles = {
   primary: "bg-primary",
   secondary: "bg-[#5AC8FA]",
+  outline: "bg-transparent border border-primary",
   ghost: "bg-transparent",
   kakao: "bg-[#FEE500]",
   google: "bg-white border border-[#E0E0E0]",
@@ -23,6 +24,7 @@ const variantStyles = {
 const variantTextStyles = {
   primary: "text-white font-bold",
   secondary: "text-white font-bold",
+  outline: "text-primary font-bold",
   ghost: "text-text-sub",
   kakao: "text-[#191919] font-bold",
   google: "text-text-main font-bold",
