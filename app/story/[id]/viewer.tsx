@@ -158,6 +158,7 @@ export default function ViewerScreen() {
     if (prev < totalPagesRef.current - 1) {
       opacityExit.value = 1; // exit 레이어가 opacity 1로 마운트되도록 미리 리셋
       isAnimatingRef.current = true;
+      currentPageRef.current = prev + 1; // 렌더 커밋 전 언마운트 대비 동기 업데이트
       setExitingPageIndex(prev);
       pendingSlideDir.current = "next";
       setCurrentPage(prev + 1);
@@ -640,6 +641,7 @@ export default function ViewerScreen() {
     if (currentPage > 0 && !isAnimatingRef.current) {
       opacityExit.value = 1;
       isAnimatingRef.current = true;
+      currentPageRef.current = currentPage - 1; // 동기 업데이트
       setExitingPageIndex(currentPage);
       pendingSlideDir.current = "prev";
       setCurrentPage((prev) => prev - 1);
@@ -651,6 +653,7 @@ export default function ViewerScreen() {
     if (currentPage < totalPages - 1) {
       opacityExit.value = 1;
       isAnimatingRef.current = true;
+      currentPageRef.current = currentPage + 1; // 동기 업데이트
       setExitingPageIndex(currentPage);
       pendingSlideDir.current = "next";
       setCurrentPage((prev) => prev + 1);
