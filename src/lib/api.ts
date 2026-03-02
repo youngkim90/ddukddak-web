@@ -128,9 +128,12 @@ export const progressApi = {
   /** 내 진행률 목록 */
   getAll: () => fetchApi<{ data: Progress[] }>("/progress"),
 
-  /** 특정 동화 진행률 조회 */
+  /** 특정 동화 진행률 조회 (없으면 null) */
   getByStoryId: (storyId: string) =>
-    fetchApi<Progress | null>(`/progress/${storyId}`),
+    fetchApi<Progress | null>(`/progress/${storyId}`).catch((err) => {
+      if (err?.statusCode === 404) return null;
+      throw err;
+    }),
 
   /** 진행률 저장 */
   save: (storyId: string, data: { currentPage: number; isCompleted: boolean }) =>
