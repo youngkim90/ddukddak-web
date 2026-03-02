@@ -265,7 +265,9 @@ export default function ViewerScreen() {
   }, [player, tryAutoAdvance, clearVideoTimers]);
 
   // 페이지 변경 시 비디오 소스 교체 + 완료 상태 초기화
+  // progressRestored=true 이후에만 실행 → 진행률 복원 전 player.pause() 방지
   useEffect(() => {
+    if (!progressRestored) return;
     const currentPageData = pages[currentPage];
     if (!currentPageData || !player) return;
 
@@ -301,7 +303,7 @@ export default function ViewerScreen() {
     }
 
     return clearVideoTimers;
-  }, [currentPage, pages, player, clearVideoTimers, tryAutoAdvance]);
+  }, [currentPage, pages, player, progressRestored, clearVideoTimers, tryAutoAdvance]);
 
   // BGM: 오디오 모드 설정 (iOS 무음모드에서도 재생)
   useEffect(() => {
